@@ -1,0 +1,4 @@
+config*.yml
+config.yml
+*.mmdb
+/gsloc
