@@ -42,6 +42,14 @@ func NewRetriever(dcName string, nbWorkers int, interval time.Duration, consulCl
 
 func (r *Retriever) Run(ctx context.Context) error {
 	r.entry.Info("starting retriever ...")
+	err := r.pollKV()
+	if err != nil {
+		r.entry.WithError(err).Error("error while polling kv")
+	}
+	err = r.pollCatalog()
+	if err != nil {
+		r.entry.WithError(err).Error("error while polling catalog")
+	}
 	go func() {
 		r.runKV(ctx)
 	}()
@@ -66,11 +74,13 @@ func (r *Retriever) runKV(ctx context.Context) {
 				r.entry.WithError(err).Error("error while polling kv")
 				continue
 			}
+			ticker.Reset(r.interval)
 		}
 	}
 }
 
 func (r *Retriever) runCatalog(ctx context.Context) {
+
 	ticker := time.NewTicker(r.interval)
 	defer ticker.Stop()
 	for {
@@ -83,6 +93,7 @@ func (r *Retriever) runCatalog(ctx context.Context) {
 				r.entry.WithError(err).Error("error while polling catalog")
 				continue
 			}
+			ticker.Reset(r.interval)
 		}
 	}
 }
@@ -224,12 +235,12 @@ func (r *Retriever) pollCatalog() error {
 				observe.EmitCatalogEntry(observe.EventTypeSet, signedEntry.Entry)
 				return
 			}
-			if rawSign == signedEntry.GetSignature() {
+			if rawSign.(string) == newSig {
 				return
 			}
 
 			r.signCheckCached.Store(fqdn, newSig)
-			log.Debugf("emitted catalog entry for %s", fqdn)
+			log.Debugf("emitted catalog entry for %s (old sign: %s - new sign: %s )", fqdn, rawSign.(string), newSig)
 			observe.EmitCatalogEntry(observe.EventTypeSet, signedEntry.Entry)
 		})
 	}

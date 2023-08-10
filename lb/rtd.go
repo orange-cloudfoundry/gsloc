@@ -6,19 +6,19 @@ import (
 	"math/rand"
 )
 
-type ReturnToDns struct {
+type Random struct {
 	entry      *entries.Entry
 	allMembers []*entries.Member
 }
 
-func NewReturnToDns(entry *entries.Entry) *ReturnToDns {
-	return &ReturnToDns{
+func NewRandom(entry *entries.Entry) *Random {
+	return &Random{
 		entry:      entry,
 		allMembers: append(entry.GetMembersIpv4(), entry.GetMembersIpv6()...),
 	}
 }
 
-func (rtd *ReturnToDns) Next(_ context.Context, memberType MemberType) (*entries.Member, error) {
+func (rtd *Random) Next(_ context.Context, memberType MemberType) (*entries.Member, error) {
 	var members []*entries.Member
 	switch memberType {
 	case All:
@@ -31,9 +31,12 @@ func (rtd *ReturnToDns) Next(_ context.Context, memberType MemberType) (*entries
 	if len(members) == 0 {
 		return nil, nil
 	}
+	if len(members) == 1 {
+		return members[0], nil
+	}
 	return members[rand.Intn(len(members))], nil
 }
 
-func (rtd *ReturnToDns) Reset() error {
+func (rtd *Random) Reset() error {
 	return nil
 }

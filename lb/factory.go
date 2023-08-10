@@ -25,8 +25,8 @@ func (f *LBFactory) MakeLb(entry *entries.Entry, algo entries.LBAlgo) Loadbalanc
 		return NewWeightedRoundRobin(entry)
 	case entries.LBAlgo_TOPOLOGY:
 		return NewTopology(entry, f.geoLoc, f.trustEdns)
-	case entries.LBAlgo_RETURN_TO_DNS:
-		return NewReturnToDns(entry)
+	case entries.LBAlgo_RANDOM:
+		return NewRandom(entry)
 	}
 	return nil
 }

@@ -48,6 +48,70 @@ func (s *Server) SetEntry(ctx context.Context, request *gslbsvc.SetEntryRequest)
 	return &emptypb.Empty{}, nil
 }
 
+func (s *Server) GetEntryStatus(ctx context.Context, req *gslbsvc.GetEntryStatusRequest) (*gslbsvc.GetEntryStatusResponse, error) {
+	fqdn := dns.Fqdn(req.GetFqdn())
+	pair, _, err := s.consulClient.KV().Get(config.ConsulKVEntriesPrefix+fqdn, nil)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return nil, status.Errorf(codes.NotFound, "entry not found")
+		}
+		return nil, status.Errorf(codes.Internal, "failed to get entry: %v", err)
+	}
+
+	signedEntry, err := s.convertPairToSignedEntry(pair)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &gslbsvc.GetEntryStatusResponse{
+		Fqdn:        fqdn,
+		MembersIpv4: make([]*gslbsvc.MemberStatus, 0),
+		MembersIpv6: make([]*gslbsvc.MemberStatus, 0),
+	}
+	msMap := map[string]*gslbsvc.MemberStatus{}
+	for _, member := range signedEntry.GetEntry().GetMembersIpv4() {
+		ms := &gslbsvc.MemberStatus{
+			Ip:            member.GetIp(),
+			Dc:            member.GetDc(),
+			Status:        gslbsvc.MemberStatus_OFFLINE,
+			FailureReason: "",
+		}
+		msMap[fqdn+ms.GetIp()] = ms
+		resp.MembersIpv4 = append(resp.MembersIpv4, ms)
+	}
+	for _, member := range signedEntry.GetEntry().GetMembersIpv6() {
+		ms := &gslbsvc.MemberStatus{
+			Ip:            member.GetIp(),
+			Dc:            member.GetDc(),
+			Status:        gslbsvc.MemberStatus_OFFLINE,
+			FailureReason: "",
+		}
+		msMap[fqdn+ms.GetIp()] = ms
+		resp.MembersIpv4 = append(resp.MembersIpv4, ms)
+	}
+
+	ents, _, err := s.consulClient.Health().Service(fqdn, "", false, &consul.QueryOptions{})
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return nil, status.Errorf(codes.NotFound, "entry not found")
+		}
+		return nil, status.Errorf(codes.Internal, "failed to get health: %v", err)
+	}
+	for _, ent := range ents {
+		ms, ok := msMap[fqdn+ent.Service.Address]
+		if !ok {
+			continue
+		}
+		if ent.Checks[0].Status == consul.HealthPassing {
+			ms.Status = gslbsvc.MemberStatus_ONLINE
+		} else {
+			ms.Status = gslbsvc.MemberStatus_CHECK_FAILED
+			ms.FailureReason = ent.Checks[0].Output
+		}
+	}
+	return resp, nil
+}
+
 func (s *Server) setSignedEntry(entry *entries.SignedEntry) error {
 	sig, err := helpers.MessageSignature(entry)
 	if err != nil {
@@ -113,6 +177,34 @@ func (s *Server) GetEntry(ctx context.Context, request *gslbsvc.GetEntryRequest)
 	fqdn := dns.Fqdn(request.GetFqdn())
 	pair, _, err := s.consulClient.KV().Get(config.ConsulKVEntriesPrefix+fqdn, nil)
 	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return nil, status.Errorf(codes.NotFound, "entry not found")
+		}
+		return nil, status.Errorf(codes.Internal, "failed to get entry: %v", err)
+	}
+
+	signedEntry, err := s.convertPairToSignedEntry(pair)
+	if err != nil {
+		return nil, err
+	}
+	return &gslbsvc.GetEntryResponse{
+		Entry:       signedEntry.GetEntry(),
+		Healthcheck: signedEntry.GetHealthcheck(),
+	}, nil
+}
+
+func (s *Server) GetEntryWithStatus(ctx context.Context, request *gslbsvc.GetEntryRequest) (*gslbsvc.GetEntryResponse, error) {
+	err := request.ValidateAll()
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
+	}
+
+	fqdn := dns.Fqdn(request.GetFqdn())
+	pair, _, err := s.consulClient.KV().Get(config.ConsulKVEntriesPrefix+fqdn, nil)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return nil, status.Errorf(codes.NotFound, "entry not found")
+		}
 		return nil, status.Errorf(codes.Internal, "failed to get entry: %v", err)
 	}
 
@@ -170,7 +262,7 @@ func (s *Server) listEntries(prefix string, tags []string) ([]*entries.SignedEnt
 		}
 		hasTag := true
 		for _, tag := range tags {
-			if lo.Contains[string](signedEntry.GetEntry().GetTags(), tag) {
+			if !lo.Contains[string](signedEntry.GetEntry().GetTags(), tag) {
 				hasTag = false
 				break
 			}
@@ -276,7 +368,7 @@ func (s *Server) SetMemberStatus(ctx context.Context, request *gslbsvc.SetMember
 	}
 	for _, member := range members {
 		if member.GetIp() == request.GetIp() {
-			member.Disabled = request.Status == gslbsvc.MemberStatus_DISABLED
+			member.Disabled = request.Status == gslbsvc.MemberState_DISABLED
 			break
 		}
 	}
@@ -308,14 +400,14 @@ func (s *Server) SetMembersStatusByFilter(ctx context.Context, request *gslbsvc.
 				continue
 			}
 			updated = true
-			member.Disabled = request.Status == gslbsvc.MemberStatus_DISABLED
+			member.Disabled = request.Status == gslbsvc.MemberState_DISABLED
 		}
 		for _, member := range signedEnt.GetEntry().GetMembersIpv6() {
 			if request.GetDc() != "" && request.GetDc() != member.GetDc() {
 				continue
 			}
 			updated = true
-			member.Disabled = request.Status == gslbsvc.MemberStatus_DISABLED
+			member.Disabled = request.Status == gslbsvc.MemberState_DISABLED
 		}
 		if !updated {
 			continue
