@@ -35,6 +35,15 @@ func (s *Server) SetEntry(ctx context.Context, request *gslbsvc.SetEntryRequest)
 		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
 	}
 
+	dcs, err := s.listDcs()
+	if err != nil {
+		return nil, err
+	}
+	err = s.checkMembersInDCS(request.GetEntry(), dcs)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
+	}
+
 	request.Entry.Fqdn = dns.Fqdn(request.GetEntry().GetFqdn())
 
 	signedEntry := &entries.SignedEntry{
@@ -293,6 +302,15 @@ func (s *Server) AddMember(ctx context.Context, request *gslbsvc.AddMemberReques
 		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
 	}
 
+	dcs, err := s.listDcs()
+	if err != nil {
+		return nil, err
+	}
+
+	if !lo.Contains[string](dcs, request.GetMember().GetDc()) {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid dc: %s", request.GetMember().GetDc())
+	}
+
 	signedEntry, err := s.retrieveSignedEntry(request.GetFqdn())
 	if err != nil {
 		return nil, err
@@ -447,12 +465,7 @@ func (s *Server) SetHealthCheck(ctx context.Context, request *gslbsvc.SetHealthC
 	return &emptypb.Empty{}, nil
 }
 
-func (s *Server) ListDcs(ctx context.Context, request *gslbsvc.ListDcsRequest) (*gslbsvc.ListDcsResponse, error) {
-	err := request.ValidateAll()
-	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
-	}
-
+func (s *Server) listDcs() ([]string, error) {
 	nodes, _, err := s.consulClient.Catalog().Nodes(&consul.QueryOptions{})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list dcs: %v", err)
@@ -468,6 +481,33 @@ func (s *Server) ListDcs(ctx context.Context, request *gslbsvc.ListDcsRequest) (
 	dcs := make([]string, 0)
 	for dc := range dcsMap {
 		dcs = append(dcs, dc)
+	}
+	return dcs, nil
+}
+
+func (s *Server) checkMembersInDCS(entry *entries.Entry, dcs []string) error {
+	for _, member := range entry.GetMembersIpv4() {
+		if !lo.Contains[string](dcs, member.Dc) {
+			return status.Errorf(codes.NotFound, "no member in dc %s", member.Dc)
+		}
+	}
+	for _, member := range entry.GetMembersIpv6() {
+		if !lo.Contains[string](dcs, member.Dc) {
+			return status.Errorf(codes.NotFound, "no member in dc %s", member.Dc)
+		}
+	}
+	return nil
+}
+
+func (s *Server) ListDcs(ctx context.Context, request *gslbsvc.ListDcsRequest) (*gslbsvc.ListDcsResponse, error) {
+	err := request.ValidateAll()
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
+	}
+
+	dcs, err := s.listDcs()
+	if err != nil {
+		return nil, err
 	}
 	return &gslbsvc.ListDcsResponse{Dcs: dcs}, nil
 }
