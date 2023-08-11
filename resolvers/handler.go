@@ -2,19 +2,23 @@ package resolvers
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"github.com/hashicorp/go-multierror"
 	"github.com/miekg/dns"
 	"github.com/orange-cloudfoundry/gsloc-go-sdk/gsloc/api/config/entries/v1"
+	"github.com/orange-cloudfoundry/gsloc/config"
 	"github.com/orange-cloudfoundry/gsloc/contexes"
 	"github.com/orange-cloudfoundry/gsloc/lb"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/encoding/protojson"
 	"net"
 	"sync"
 )
 
 const (
-	defaultTtl = 60
+	defaultTtl    = 60
+	allMemberHost = "_all."
 )
 
 type entryRef struct {
@@ -25,14 +29,16 @@ type entryRef struct {
 }
 
 type GSLBHandler struct {
-	entries   *sync.Map
-	lbFactory *lb.LBFactory
+	entries        *sync.Map
+	lbFactory      *lb.LBFactory
+	allowedInspect []*config.CIDR
 }
 
-func NewGSLBHandler(lbFactory *lb.LBFactory) *GSLBHandler {
+func NewGSLBHandler(lbFactory *lb.LBFactory, allowedInspect []*config.CIDR) *GSLBHandler {
 	return &GSLBHandler{
-		entries:   &sync.Map{},
-		lbFactory: lbFactory,
+		entries:        &sync.Map{},
+		lbFactory:      lbFactory,
+		allowedInspect: allowedInspect,
 	}
 }
 
@@ -78,6 +84,13 @@ func (h *GSLBHandler) ServeDNS(w dns.ResponseWriter, msg *dns.Msg) {
 }
 
 func (h *GSLBHandler) Resolve(ctx context.Context, fqdn string, queryType uint16) []dns.RR {
+	seeAll := false
+
+	if fqdn[:len(allMemberHost)] == allMemberHost {
+		fqdn = fqdn[len(allMemberHost):]
+		fmt.Println(fqdn)
+		seeAll = true
+	}
 	entryRefRaw, ok := h.entries.Load(fqdn)
 	if !ok {
 		return []dns.RR{}
@@ -92,6 +105,11 @@ func (h *GSLBHandler) Resolve(ctx context.Context, fqdn string, queryType uint16
 	er := entryRefRaw.(entryRef)
 	var memberType lb.MemberType
 	switch queryType {
+	case dns.TypeTXT:
+		if !h.isAllowedInspect(ctx) {
+			return []dns.RR{}
+		}
+		return h.answerJson(er.entry)
 	case dns.TypeA:
 		memberType = lb.Ipv4
 	case dns.TypeAAAA:
@@ -104,6 +122,9 @@ func (h *GSLBHandler) Resolve(ctx context.Context, fqdn string, queryType uint16
 	ttl := defaultTtl
 	if er.entry.GetTtl() > 0 {
 		ttl = int(er.entry.GetTtl())
+	}
+	if seeAll && h.isAllowedInspect(ctx) {
+		return h.seeAll(er.entry, queryType)
 	}
 	members, err := h.findMembers(ctx, er, memberType)
 	if err != nil {
@@ -122,6 +143,57 @@ func (h *GSLBHandler) Resolve(ctx context.Context, fqdn string, queryType uint16
 		rrs = append(rrs, rr)
 	}
 
+	return rrs
+}
+
+func (h *GSLBHandler) isAllowedInspect(ctx context.Context) bool {
+	remoteAddr := net.ParseIP(contexes.GetRemoteAddr(ctx))
+	for _, cidr := range h.allowedInspect {
+		if cidr.IpNet.Contains(remoteAddr) {
+			return true
+		}
+	}
+	return false
+}
+
+func (h *GSLBHandler) answerJson(entry *entries.Entry) []dns.RR {
+	var b []byte
+	// could not happen error here
+	b, _ = protojson.Marshal(entry) // nolint: errcheck
+
+	rr, err := dns.NewRR(
+		fmt.Sprintf("%s IN TXT %s", entry.GetFqdn(), base64.StdEncoding.EncodeToString(b)),
+	)
+	if err != nil {
+		log.Errorf("error creating dns RR: %s", err.Error())
+		return []dns.RR{}
+	}
+	return []dns.RR{rr}
+}
+
+func (h *GSLBHandler) seeAll(entry *entries.Entry, queryType uint16) []dns.RR {
+	var members []*entries.Member
+	switch queryType {
+	case dns.TypeA:
+		members = entry.GetMembersIpv4()
+	case dns.TypeAAAA:
+		members = entry.GetMembersIpv6()
+	case dns.TypeANY:
+		members = append(entry.GetMembersIpv4(), entry.GetMembersIpv6()...)
+	default:
+		return []dns.RR{}
+	}
+	rrs := make([]dns.RR, 0)
+	for _, member := range members {
+		rr, err := dns.NewRR(
+			fmt.Sprintf("%s %d IN %s %s", entry.GetFqdn(), entry.GetTtl(), dns.TypeToString[queryType], member.GetIp()),
+		)
+		if err != nil {
+			log.Errorf("error creating dns RR: %s", err.Error())
+			continue
+		}
+		rrs = append(rrs, rr)
+	}
 	return rrs
 }
 

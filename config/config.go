@@ -10,8 +10,9 @@ import (
 )
 
 type DNSServerConfig struct {
-	Listen    string `yaml:"listen"`
-	TrustEdns bool   `yaml:"trust_edns"`
+	Listen         string  `yaml:"listen"`
+	TrustEdns      bool    `yaml:"trust_edns"`
+	AllowedInspect []*CIDR `yaml:"allowed_inspect"`
 }
 
 func (c *DNSServerConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {

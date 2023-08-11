@@ -2,7 +2,10 @@ package healthchecks_test
 
 import (
 	"crypto/tls"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 	hcconf "github.com/orange-cloudfoundry/gsloc-go-sdk/gsloc/api/config/healthchecks/v1"
+	. "github.com/orange-cloudfoundry/gsloc/healthchecks"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"

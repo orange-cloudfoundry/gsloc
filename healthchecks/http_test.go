@@ -2,9 +2,13 @@ package healthchecks_test
 
 import (
 	"crypto/tls"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/ghttp"
+	"github.com/orange-cloudfoundry/gsloc-go-sdk/gsloc/api/config/core/v1"
 	hcconf "github.com/orange-cloudfoundry/gsloc-go-sdk/gsloc/api/config/healthchecks/v1"
 	gsloctype "github.com/orange-cloudfoundry/gsloc-go-sdk/gsloc/type/v1"
+	. "github.com/orange-cloudfoundry/gsloc/healthchecks"
 	"io"
 	"net/http"
 	"time"

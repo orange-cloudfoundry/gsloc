@@ -17,6 +17,7 @@ import (
 	"github.com/orange-cloudfoundry/gsloc/servers"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"net"
 	"os"
 	"os/signal"
 	"sync"
@@ -136,7 +137,17 @@ func (a *App) loadLbFactory() error {
 }
 
 func (a *App) loadGSLBHandler() error {
-	a.gslbHandler = resolvers.NewGSLBHandler(a.lbFactory)
+	_, local4, _ := net.ParseCIDR("127.0.0.1/32") // nolint:errcheck
+	_, local6, _ := net.ParseCIDR("::1/128")      // nolint:errcheck
+	allowed := []*config.CIDR{
+		{
+			IpNet: local4,
+		},
+		{
+			IpNet: local6,
+		},
+	}
+	a.gslbHandler = resolvers.NewGSLBHandler(a.lbFactory, append(allowed, a.cnf.DNSServer.AllowedInspect...))
 	return nil
 }
 

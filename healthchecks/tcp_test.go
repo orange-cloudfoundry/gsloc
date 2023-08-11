@@ -1,10 +1,14 @@
 package healthchecks_test
 
 import (
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 	hcconf "github.com/orange-cloudfoundry/gsloc-go-sdk/gsloc/api/config/healthchecks/v1"
+	. "github.com/orange-cloudfoundry/gsloc/healthchecks"
 	"github.com/orange-cloudfoundry/gsloc/testhelpers"
 	"net"
 	"sync/atomic"
+
 	"time"
 )
 
