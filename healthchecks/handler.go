@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	hcconf "github.com/orange-cloudfoundry/gsloc-go-sdk/gsloc/api/config/healthchecks/v1"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/encoding/protojson"
 	"io"
 	"net/http"
@@ -24,10 +25,12 @@ func NewHcHandler(tlsConf *tls.Config) *HcHandler {
 }
 
 func (h *HcHandler) DisableEntryIp(fqdn, ip string) {
+	log.Tracef(fmt.Sprintf("Disabling %s-%s", fqdn, ip))
 	h.disabledEntIp.Store(fmt.Sprintf("%s-%s", fqdn, ip), struct{}{})
 }
 
 func (h *HcHandler) EnableEntryIp(fqdn, ip string) {
+	log.Tracef(fmt.Sprintf("Enabling %s-%s", fqdn, ip))
 	h.disabledEntIp.Delete(fmt.Sprintf("%s-%s", fqdn, ip))
 }
 

@@ -5,6 +5,7 @@ import (
 	consul "github.com/hashicorp/consul/api"
 	"github.com/orange-cloudfoundry/gsloc-go-sdk/gsloc/api/config/entries/v1"
 	"github.com/orange-cloudfoundry/gsloc/config"
+	"github.com/orange-cloudfoundry/gsloc/observe"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -27,7 +28,6 @@ func (cd *ConsulDiscoverer) SetKVEntry(entry *entries.SignedEntry) {
 	cd.registerMembers(entry, entry.GetEntry().GetMembersIpv4())
 	cd.registerMembers(entry, entry.GetEntry().GetMembersIpv6())
 }
-
 func (cd *ConsulDiscoverer) registerMembers(entry *entries.SignedEntry, members []*entries.Member) {
 	hcBytes, err := protojson.Marshal(entry.GetHealthcheck())
 	if err != nil {
@@ -44,6 +44,10 @@ func (cd *ConsulDiscoverer) registerMembers(entry *entries.SignedEntry, members 
 		if member.GetDc() != cd.dcName {
 			continue
 		}
+		observe.EmitMember(observe.EventTypeSet, &observe.MemberFqdn{
+			Fqdn:   entry.GetEntry().GetFqdn(),
+			Member: member,
+		})
 		id := fmt.Sprintf("%s%s", entry.GetEntry().GetFqdn(), member.GetIp())
 		tags := append(parentTags, []string{
 			fmt.Sprintf("%s%d", config.ConsulPrefixTagRatio, member.GetRatio()),

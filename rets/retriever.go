@@ -155,17 +155,7 @@ func (r *Retriever) pollKV() error {
 	}
 	return nil
 }
-func (r *Retriever) notifMembersChange(fqdn string, members []*entries.Member) {
-	for _, member := range members {
-		if member.GetDc() != r.dcName {
-			continue
-		}
-		observe.EmitMember(observe.EventTypeSet, &observe.MemberFqdn{
-			Fqdn:   fqdn,
-			Member: member,
-		})
-	}
-}
+
 func (r *Retriever) pollCatalog() error {
 	r.entry.Info("polling catalog ...")
 	defer r.entry.Info("polling catalog done.")
@@ -240,7 +230,7 @@ func (r *Retriever) pollCatalog() error {
 			}
 
 			r.signCheckCached.Store(fqdn, newSig)
-			log.Debugf("emitted catalog entry for %s (old sign: %s - new sign: %s )", fqdn, rawSign.(string), newSig)
+			log.Tracef("emitted catalog entry for %s (old sign: %s - new sign: %s )", fqdn, rawSign.(string), newSig)
 			observe.EmitCatalogEntry(observe.EventTypeSet, signedEntry.Entry)
 		})
 	}
