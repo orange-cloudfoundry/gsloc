@@ -23,15 +23,14 @@ const (
 // InterceptorLogger adapts logrus logger to interceptor logger.
 // This code is simple enough to be copied and not imported.
 func InterceptorLogger(l log.FieldLogger) logging.Logger {
-	return logging.LoggerFunc(func(_ context.Context, lvl logging.Level, msg string, fields ...any) {
-		f := make(map[string]any, len(fields)/2)
+	return logging.LoggerFunc(func(ctx context.Context, lvl logging.Level, msg string, fields ...any) {
+		f := make(log.Fields)
 		i := logging.Fields(fields).Iterator()
-		if i.Next() {
+		for i.Next() {
 			k, v := i.At()
 			f[k] = v
 		}
 		l := l.WithFields(f)
-
 		switch lvl {
 		case logging.LevelDebug:
 			l.Debug(msg)
