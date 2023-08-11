@@ -2,8 +2,6 @@ module github.com/orange-cloudfoundry/gsloc
 
 go 1.20
 
-replace github.com/orange-cloudfoundry/gsloc-go-sdk v0.0.0 => ../gsloc-go-sdk
-
 require (
 	github.com/ArthurHlt/emitter v1.1.0
 	github.com/alecthomas/kong v0.8.0
@@ -14,7 +12,7 @@ require (
 	github.com/miekg/dns v1.1.55
 	github.com/onsi/ginkgo/v2 v2.11.0
 	github.com/onsi/gomega v1.27.10
-	github.com/orange-cloudfoundry/gsloc-go-sdk v0.0.0
+	github.com/orange-cloudfoundry/gsloc-go-sdk v0.1.0
 	github.com/oschwald/geoip2-golang v1.9.0
 	github.com/prometheus/client_golang v1.16.0
 	github.com/quic-go/quic-go v0.37.0
@@ -30,7 +28,6 @@ require (
 require (
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/brianvoe/gofakeit/v6 v6.23.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.0.2 // indirect
 	github.com/fatih/color v1.14.1 // indirect

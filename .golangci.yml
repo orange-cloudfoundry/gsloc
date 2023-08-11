@@ -1,0 +1,20 @@
+run:
+  modules-download-mode: vendor
+
+linters-settings:
+  errcheck:
+    exclude-functions:
+      - io/ioutil.ReadFile
+      - io.WriteString
+      - '(net/http.ResponseWriter).Write'
+  staticcheck:
+    checks:
+      - all
+      - '-SA5008'
+issues:
+  exclude-rules:
+    - path: '(.+)_test\.go'
+      # we use a lot of test with importing with '.'
+      # but this linter doesn't like it so we skip as anyway we will run the tests
+      linters:
+        - typecheck
