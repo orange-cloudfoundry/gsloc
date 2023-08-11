@@ -4,6 +4,7 @@ import (
 	"context"
 	consul "github.com/hashicorp/consul/api"
 	"github.com/hashicorp/go-multierror"
+	"github.com/miekg/dns"
 	"github.com/orange-cloudfoundry/gsloc-go-sdk/gsloc/api/config/entries/v1"
 	gslbsvc "github.com/orange-cloudfoundry/gsloc-go-sdk/gsloc/services/gslb/v1"
 	"github.com/samber/lo"
@@ -30,7 +31,9 @@ func (s *Server) SetMember(ctx context.Context, request *gslbsvc.SetMemberReques
 		return nil, status.Errorf(codes.InvalidArgument, "invalid dc: %s", request.GetMember().GetDc())
 	}
 
-	signedEntry, err := s.retrieveSignedEntry(request.GetFqdn())
+	fqdn := dns.Fqdn(request.GetFqdn())
+
+	signedEntry, err := s.retrieveSignedEntry(fqdn)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +65,10 @@ func (s *Server) DeleteMember(ctx context.Context, request *gslbsvc.DeleteMember
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
 	}
-	signedEntry, err := s.retrieveSignedEntry(request.GetFqdn())
+
+	fqdn := dns.Fqdn(request.GetFqdn())
+
+	signedEntry, err := s.retrieveSignedEntry(fqdn)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +193,9 @@ func (s *Server) GetMember(ctx context.Context, request *gslbsvc.GetMemberReques
 		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
 	}
 
-	signedEntry, err := s.retrieveSignedEntry(request.GetFqdn())
+	fqdn := dns.Fqdn(request.GetFqdn())
+
+	signedEntry, err := s.retrieveSignedEntry(fqdn)
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +220,9 @@ func (s *Server) ListMembers(ctx context.Context, request *gslbsvc.ListMembersRe
 		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
 	}
 
-	signedEntry, err := s.retrieveSignedEntry(request.GetFqdn())
+	fqdn := dns.Fqdn(request.GetFqdn())
+
+	signedEntry, err := s.retrieveSignedEntry(fqdn)
 	if err != nil {
 		return nil, err
 	}

@@ -227,6 +227,9 @@ func (s *Server) GetEntryWithStatus(ctx context.Context, request *gslbsvc.GetEnt
 }
 
 func (s *Server) convertPairToSignedEntry(pair *consul.KVPair) (*entries.SignedEntry, error) {
+	if pair == nil {
+		return nil, status.Errorf(codes.NotFound, "entry not found")
+	}
 	signedEntry := &entries.SignedEntry{}
 	err := protojson.Unmarshal(pair.Value, signedEntry)
 	if err != nil {

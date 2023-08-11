@@ -2,6 +2,7 @@ package gslb
 
 import (
 	"context"
+	"github.com/miekg/dns"
 	gslbsvc "github.com/orange-cloudfoundry/gsloc-go-sdk/gsloc/services/gslb/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -14,7 +15,8 @@ func (s *Server) SetHealthCheck(ctx context.Context, request *gslbsvc.SetHealthC
 		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
 	}
 
-	signedEntry, err := s.retrieveSignedEntry(request.GetFqdn())
+	fqdn := dns.Fqdn(request.GetFqdn())
+	signedEntry, err := s.retrieveSignedEntry(fqdn)
 	if err != nil {
 		return nil, err
 	}
@@ -32,8 +34,9 @@ func (s *Server) GetHealthCheck(ctx context.Context, request *gslbsvc.GetHealthC
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
 	}
+	fqdn := dns.Fqdn(request.GetFqdn())
 
-	signedEntry, err := s.retrieveSignedEntry(request.GetFqdn())
+	signedEntry, err := s.retrieveSignedEntry(fqdn)
 	if err != nil {
 		return nil, err
 	}
