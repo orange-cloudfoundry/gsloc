@@ -31,7 +31,6 @@ type GrpcHealthCheckOpt struct { // An optional service name parameter which wil
 type GrpcHealthCheck struct {
 	conf       *hcconf.GrpcHealthCheck
 	tlsEnabled bool
-	altPort    uint32
 	timeout    time.Duration
 	tlsConf    *tls.Config
 }

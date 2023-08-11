@@ -171,6 +171,7 @@ func (h *GSLBHandler) findMember(ctx context.Context, er entryRef, memberType lb
 	nextMember, err = er.lbFallback.Next(ctx, memberType)
 	if err != nil {
 		result = multierror.Append(result, err)
+		return nil, fmt.Errorf("error finding member: %s", result.Error())
 	}
-	return nil, fmt.Errorf("error finding member: %s", result.Error())
+	return nextMember, nil
 }
