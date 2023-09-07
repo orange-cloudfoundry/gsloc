@@ -2,10 +2,10 @@ package config
 
 const (
 	ConsulKVEntriesPrefix   = "gsloc/entries/"
-	ConsulPrefixTagRatio    = "gsloc-ratio="
-	ConsulPrefixTagTag      = "gsloc-tag-"
-	ConsulPrefixTagDc       = "gsloc-dc="
-	ConsulPrefixTagDisabled = "gsloc-disabled"
-	ConsulMetaEntryKey      = "gsloc-entry"
-	ConsulMetaDcKey         = "gsloc-dc"
+	ConsulPrefixTagRatio    = "gsloc_ratio="
+	ConsulPrefixTagTag      = "gsloc_tag-"
+	ConsulPrefixTagDc       = "gsloc_dc="
+	ConsulPrefixTagDisabled = "gsloc_disabled"
+	ConsulMetaEntryKey      = "gsloc_entry"
+	ConsulMetaDcKey         = "gsloc_dc"
 )

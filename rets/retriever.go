@@ -249,7 +249,7 @@ func (r *Retriever) consulEntryToMember(consulEnt *consul.ServiceEntry) *entries
 			ratio, err = strconv.Atoi(ratioStr)
 			if err != nil {
 				ratio = 0
-				r.entry.WithError(err).Errorf("error while parsing gsloc-ratio tag %s for %s", tag, consulEnt.Service.ID)
+				r.entry.WithError(err).Errorf("error while parsing gsloc_ratio tag %s for %s", tag, consulEnt.Service.ID)
 			}
 			continue
 		}
