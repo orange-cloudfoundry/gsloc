@@ -31,7 +31,7 @@ func (s *Server) SetMember(ctx context.Context, request *gslbsvc.SetMemberReques
 		return nil, status.Errorf(codes.InvalidArgument, "invalid dc: %s", request.GetMember().GetDc())
 	}
 
-	fqdn := dns.Fqdn(request.GetFqdn())
+	fqdn := dns.CanonicalName(request.GetFqdn())
 
 	signedEntry, err := s.retrieveSignedEntry(fqdn)
 	if err != nil {
@@ -66,7 +66,7 @@ func (s *Server) DeleteMember(ctx context.Context, request *gslbsvc.DeleteMember
 		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
 	}
 
-	fqdn := dns.Fqdn(request.GetFqdn())
+	fqdn := dns.CanonicalName(request.GetFqdn())
 
 	signedEntry, err := s.retrieveSignedEntry(fqdn)
 	if err != nil {
@@ -193,7 +193,7 @@ func (s *Server) GetMember(ctx context.Context, request *gslbsvc.GetMemberReques
 		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
 	}
 
-	fqdn := dns.Fqdn(request.GetFqdn())
+	fqdn := dns.CanonicalName(request.GetFqdn())
 
 	signedEntry, err := s.retrieveSignedEntry(fqdn)
 	if err != nil {
@@ -220,7 +220,7 @@ func (s *Server) ListMembers(ctx context.Context, request *gslbsvc.ListMembersRe
 		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
 	}
 
-	fqdn := dns.Fqdn(request.GetFqdn())
+	fqdn := dns.CanonicalName(request.GetFqdn())
 
 	signedEntry, err := s.retrieveSignedEntry(fqdn)
 	if err != nil {

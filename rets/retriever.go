@@ -114,7 +114,7 @@ func (r *Retriever) pollKV() error {
 	p := pool.New().WithMaxGoroutines(r.nbWorkers)
 	for _, kvPair := range kvPairs {
 		kvPair := kvPair
-		fqdn := dns.Fqdn(kvPair.Key[len(config.ConsulKVEntriesPrefix):])
+		fqdn := dns.CanonicalName(kvPair.Key[len(config.ConsulKVEntriesPrefix):])
 		delete(toRemove, fqdn)
 		p.Go(func() {
 			signedEntry := &entries.SignedEntry{}

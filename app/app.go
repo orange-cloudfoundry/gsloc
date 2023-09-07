@@ -2,8 +2,6 @@ package app
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	consul "github.com/hashicorp/consul/api"
 	"github.com/orange-cloudfoundry/gsloc/config"
@@ -152,17 +150,7 @@ func (a *App) loadGSLBHandler() error {
 }
 
 func (a *App) loadHcHandler() error {
-	var caCertPool *x509.CertPool
-
-	if a.cnf.HealthCheckConfig.CA != "" {
-		caCertPool = x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM([]byte(a.cnf.HealthCheckConfig.CA))
-	}
-	tlsConf := &tls.Config{
-		InsecureSkipVerify: a.cnf.HealthCheckConfig.InsecureSkipVerify,
-		RootCAs:            caCertPool,
-	}
-	a.hcHandler = healthchecks.NewHcHandler(tlsConf)
+	a.hcHandler = healthchecks.NewHcHandler()
 	return nil
 }
 

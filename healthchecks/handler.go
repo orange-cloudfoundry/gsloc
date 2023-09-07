@@ -1,7 +1,6 @@
 package healthchecks
 
 import (
-	"crypto/tls"
 	"fmt"
 	"github.com/gorilla/mux"
 	hcconf "github.com/orange-cloudfoundry/gsloc-go-sdk/gsloc/api/config/healthchecks/v1"
@@ -13,13 +12,11 @@ import (
 )
 
 type HcHandler struct {
-	tlsConf       *tls.Config
 	disabledEntIp *sync.Map
 }
 
-func NewHcHandler(tlsConf *tls.Config) *HcHandler {
+func NewHcHandler() *HcHandler {
 	return &HcHandler{
-		tlsConf:       tlsConf,
 		disabledEntIp: &sync.Map{},
 	}
 }
@@ -65,7 +62,7 @@ func (h *HcHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	hcker := MakeHealthCheck(hcDef, h.tlsConf)
+	hcker := MakeHealthCheck(hcDef, fqdn)
 	host := fmt.Sprintf("%s:%d", ip, hcDef.GetPort())
 	err = hcker.Check(host)
 	if err != nil {

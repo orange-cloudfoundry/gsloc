@@ -15,7 +15,7 @@ func (s *Server) SetHealthCheck(ctx context.Context, request *gslbsvc.SetHealthC
 		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
 	}
 
-	fqdn := dns.Fqdn(request.GetFqdn())
+	fqdn := dns.CanonicalName(request.GetFqdn())
 	signedEntry, err := s.retrieveSignedEntry(fqdn)
 	if err != nil {
 		return nil, err
@@ -34,7 +34,7 @@ func (s *Server) GetHealthCheck(ctx context.Context, request *gslbsvc.GetHealthC
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
 	}
-	fqdn := dns.Fqdn(request.GetFqdn())
+	fqdn := dns.CanonicalName(request.GetFqdn())
 
 	signedEntry, err := s.retrieveSignedEntry(fqdn)
 	if err != nil {

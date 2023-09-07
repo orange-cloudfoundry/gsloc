@@ -32,7 +32,7 @@ func (s *Server) SetEntry(ctx context.Context, request *gslbsvc.SetEntryRequest)
 		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
 	}
 
-	request.Entry.Fqdn = dns.Fqdn(request.GetEntry().GetFqdn())
+	request.Entry.Fqdn = dns.CanonicalName(request.GetEntry().GetFqdn())
 
 	signedEntry := &entries.SignedEntry{
 		Entry:       request.GetEntry(),
@@ -46,7 +46,7 @@ func (s *Server) SetEntry(ctx context.Context, request *gslbsvc.SetEntryRequest)
 }
 
 func (s *Server) GetEntryStatus(ctx context.Context, req *gslbsvc.GetEntryStatusRequest) (*gslbsvc.GetEntryStatusResponse, error) {
-	fqdn := dns.Fqdn(req.GetFqdn())
+	fqdn := dns.CanonicalName(req.GetFqdn())
 	pair, _, err := s.consulClient.KV().Get(config.ConsulKVEntriesPrefix+fqdn, nil)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
@@ -168,7 +168,7 @@ func (s *Server) DeleteEntry(ctx context.Context, request *gslbsvc.DeleteEntryRe
 		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
 	}
 
-	fqdn := dns.Fqdn(request.GetFqdn())
+	fqdn := dns.CanonicalName(request.GetFqdn())
 	_, err = s.consulClient.KV().Delete(config.ConsulKVEntriesPrefix+fqdn, nil)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete entry: %v", err)
@@ -182,7 +182,7 @@ func (s *Server) GetEntry(ctx context.Context, request *gslbsvc.GetEntryRequest)
 		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
 	}
 
-	fqdn := dns.Fqdn(request.GetFqdn())
+	fqdn := dns.CanonicalName(request.GetFqdn())
 	pair, _, err := s.consulClient.KV().Get(config.ConsulKVEntriesPrefix+fqdn, nil)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
@@ -207,7 +207,7 @@ func (s *Server) GetEntryWithStatus(ctx context.Context, request *gslbsvc.GetEnt
 		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
 	}
 
-	fqdn := dns.Fqdn(request.GetFqdn())
+	fqdn := dns.CanonicalName(request.GetFqdn())
 	pair, _, err := s.consulClient.KV().Get(config.ConsulKVEntriesPrefix+fqdn, nil)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {

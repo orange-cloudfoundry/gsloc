@@ -1,8 +1,6 @@
 package config
 
 type HealthCheckConfig struct {
-	InsecureSkipVerify bool   `yaml:"insecure_skip_verify"`
-	CA                 string `yaml:"ca"`
 	HealthcheckAddress string `yaml:"healthcheck_address"`
 }
 
