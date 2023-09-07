@@ -12,7 +12,7 @@ require (
 	github.com/miekg/dns v1.1.55
 	github.com/onsi/ginkgo/v2 v2.12.0
 	github.com/onsi/gomega v1.27.10
-	github.com/orange-cloudfoundry/gsloc-go-sdk v0.1.0
+	github.com/orange-cloudfoundry/gsloc-go-sdk v0.2.0
 	github.com/oschwald/geoip2-golang v1.9.0
 	github.com/prometheus/client_golang v1.16.0
 	github.com/quic-go/quic-go v0.38.1
