@@ -18,7 +18,7 @@ import (
 
 const (
 	defaultTtl    = 60
-	allMemberHost = "*."
+	allMemberHost = "_all."
 )
 
 type entryRef struct {
@@ -185,7 +185,7 @@ func (h *GSLBHandler) seeAll(entry *entries.Entry, queryType uint16) []dns.RR {
 	rrs := make([]dns.RR, 0)
 	for _, member := range members {
 		rr, err := dns.NewRR(
-			fmt.Sprintf("%s %d IN %s %s", entry.GetFqdn(), entry.GetTtl(), dns.TypeToString[queryType], member.GetIp()),
+			fmt.Sprintf("%s%s %d IN %s %s", allMemberHost, entry.GetFqdn(), entry.GetTtl(), dns.TypeToString[queryType], member.GetIp()),
 		)
 		if err != nil {
 			log.Errorf("error creating dns RR: %s", err.Error())
