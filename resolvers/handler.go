@@ -18,7 +18,7 @@ import (
 
 const (
 	defaultTtl    = 60
-	allMemberHost = "_all."
+	allMemberHost = "*."
 )
 
 type entryRef struct {
@@ -88,7 +88,6 @@ func (h *GSLBHandler) Resolve(ctx context.Context, fqdn string, queryType uint16
 
 	if fqdn[:len(allMemberHost)] == allMemberHost {
 		fqdn = fqdn[len(allMemberHost):]
-		fmt.Println(fqdn)
 		seeAll = true
 	}
 	entryRefRaw, ok := h.entries.Load(fqdn)
