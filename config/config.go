@@ -36,6 +36,7 @@ type Config struct {
 	ConsulConfig      *ConsulConfig      `yaml:"consul_config"`
 	HealthCheckConfig *HealthCheckConfig `yaml:"healthcheck_config"`
 	GeoLoc            *GeoLoc            `yaml:"geo_loc"`
+	MetricsConfig     *MetricsConfig     `yaml:"metrics"`
 }
 
 func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -78,6 +79,13 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 	if c.GeoLoc == nil {
 		return fmt.Errorf("geo_loc is required")
+	}
+	if c.MetricsConfig == nil {
+		c.MetricsConfig = &MetricsConfig{}
+		err = c.MetricsConfig.init()
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

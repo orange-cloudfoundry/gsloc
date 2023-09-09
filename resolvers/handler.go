@@ -134,6 +134,9 @@ func (h *GSLBHandler) Resolve(ctx context.Context, fqdn string, queryType uint16
 		log.Errorf("error finding members: %s", err.Error())
 		return []dns.RR{}
 	}
+	if len(members) == 0 {
+		return []dns.RR{}
+	}
 	rrs := make([]dns.RR, 0)
 	for _, member := range members {
 		rr, err := dns.NewRR(

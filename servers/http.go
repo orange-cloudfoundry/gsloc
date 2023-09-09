@@ -5,29 +5,39 @@ import (
 	"fmt"
 	"github.com/orange-cloudfoundry/gsloc/config"
 	"github.com/orange-cloudfoundry/gsloc/healthchecks"
+	"github.com/orange-cloudfoundry/gsloc/proxmetrics"
 	"google.golang.org/grpc"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 )
 
 type HTTPServer struct {
-	mux      *mux.Router
-	cnf      *config.HTTPServerConfig
-	hcker    *healthchecks.HcHandler
-	grpcServ *grpc.Server
+	mux             *mux.Router
+	cnf             *config.HTTPServerConfig
+	hcker           *healthchecks.HcHandler
+	grpcServ        *grpc.Server
+	metricsFetcher  *proxmetrics.Fetcher
+	statusCollector *proxmetrics.StatusCollector
 }
 
-func NewHTTPServer(cnf *config.HTTPServerConfig, hcker *healthchecks.HcHandler, grpcServ *grpc.Server) *HTTPServer {
+func NewHTTPServer(
+	cnf *config.HTTPServerConfig,
+	hcker *healthchecks.HcHandler,
+	grpcServ *grpc.Server,
+	metricsFetcher *proxmetrics.Fetcher,
+	statusCollector *proxmetrics.StatusCollector,
+) *HTTPServer {
 	return &HTTPServer{
-		mux:      mux.NewRouter(),
-		cnf:      cnf,
-		hcker:    hcker,
-		grpcServ: grpcServ,
+		mux:             mux.NewRouter(),
+		cnf:             cnf,
+		hcker:           hcker,
+		grpcServ:        grpcServ,
+		metricsFetcher:  metricsFetcher,
+		statusCollector: statusCollector,
 	}
 }
 
@@ -44,7 +54,8 @@ func (s *HTTPServer) ServeHTTP(writer http.ResponseWriter, request *http.Request
 }
 
 func (s *HTTPServer) Run(ctx context.Context) {
-	s.mux.Path("/metrics").Handler(promhttp.Handler())
+	s.mux.Path("/metrics").Handler(s.metricsFetcher)
+	s.mux.Path("/metrics/status").Handler(proxmetrics.StatusHandler(s.statusCollector))
 	s.mux.Methods("POST").Path("/hc/{fqdn}/member/{ip}").Handler(s.hcker)
 
 	srvTls := &http.Server{

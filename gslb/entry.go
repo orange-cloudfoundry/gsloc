@@ -8,8 +8,6 @@ import (
 	gslbsvc "github.com/orange-cloudfoundry/gsloc-go-sdk/gsloc/services/gslb/v1"
 	"github.com/orange-cloudfoundry/gsloc-go-sdk/helpers"
 	"github.com/orange-cloudfoundry/gsloc/config"
-	"github.com/samber/lo"
-	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -45,79 +43,19 @@ func (s *Server) SetEntry(ctx context.Context, request *gslbsvc.SetEntryRequest)
 	return &emptypb.Empty{}, nil
 }
 
-func (s *Server) GetEntryStatus(ctx context.Context, req *gslbsvc.GetEntryStatusRequest) (*gslbsvc.GetEntryStatusResponse, error) {
-	fqdn := dns.CanonicalName(req.GetFqdn())
-	pair, _, err := s.consulClient.KV().Get(config.ConsulKVEntriesPrefix+fqdn, nil)
-	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			return nil, status.Errorf(codes.NotFound, "entry not found")
-		}
-		return nil, status.Errorf(codes.Internal, "failed to get entry: %v", err)
-	}
-
-	signedEntry, err := s.convertPairToSignedEntry(pair)
+func (s *Server) ListEntriesStatus(ctx context.Context, req *gslbsvc.ListEntriesStatusRequest) (*gslbsvc.ListEntriesStatusResponse, error) {
+	allEntriesStatus, err := s.gslocConsul.ListEntriesStatus(req.GetPrefix(), req.GetTags())
 	if err != nil {
 		return nil, err
 	}
+	return &gslbsvc.ListEntriesStatusResponse{
+		EntriesStatus: allEntriesStatus,
+	}, nil
+}
 
-	resp := &gslbsvc.GetEntryStatusResponse{
-		Fqdn:        fqdn,
-		MembersIpv4: make([]*gslbsvc.MemberStatus, 0),
-		MembersIpv6: make([]*gslbsvc.MemberStatus, 0),
-	}
-	msMap := map[string]*gslbsvc.MemberStatus{}
-	for _, member := range signedEntry.GetEntry().GetMembersIpv4() {
-		ms := &gslbsvc.MemberStatus{
-			Ip:            member.GetIp(),
-			Dc:            member.GetDc(),
-			Status:        gslbsvc.MemberStatus_OFFLINE,
-			FailureReason: "",
-		}
-		msMap[fqdn+ms.GetIp()] = ms
-		resp.MembersIpv4 = append(resp.MembersIpv4, ms)
-	}
-	for _, member := range signedEntry.GetEntry().GetMembersIpv6() {
-		ms := &gslbsvc.MemberStatus{
-			Ip:            member.GetIp(),
-			Dc:            member.GetDc(),
-			Status:        gslbsvc.MemberStatus_OFFLINE,
-			FailureReason: "",
-		}
-		msMap[fqdn+ms.GetIp()] = ms
-		resp.MembersIpv4 = append(resp.MembersIpv4, ms)
-	}
-
-	ents, _, err := s.consulClient.Health().Service(fqdn, "", false, &consul.QueryOptions{})
-	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			return nil, status.Errorf(codes.NotFound, "entry not found")
-		}
-		return nil, status.Errorf(codes.Internal, "failed to get health: %v", err)
-	}
-	for _, ent := range ents {
-		ms, ok := msMap[fqdn+ent.Service.Address]
-		if !ok {
-			continue
-		}
-		var check *consul.HealthCheck
-		for _, c := range ent.Checks {
-			if c.Type == "http" {
-				check = c
-				break
-			}
-		}
-		if check == nil {
-			log.Warnf("no http check found for %s", ent.Service.Address)
-			continue
-		}
-		if check.Status == consul.HealthPassing {
-			ms.Status = gslbsvc.MemberStatus_ONLINE
-		} else {
-			ms.Status = gslbsvc.MemberStatus_CHECK_FAILED
-			ms.FailureReason = check.Output
-		}
-	}
-	return resp, nil
+func (s *Server) GetEntryStatus(ctx context.Context, req *gslbsvc.GetEntryStatusRequest) (*gslbsvc.GetEntryStatusResponse, error) {
+	fqdn := dns.CanonicalName(req.GetFqdn())
+	return s.gslocConsul.GetEntryStatus(fqdn)
 }
 
 func (s *Server) setSignedEntry(entry *entries.SignedEntry) error {
@@ -191,7 +129,7 @@ func (s *Server) GetEntry(ctx context.Context, request *gslbsvc.GetEntryRequest)
 		return nil, status.Errorf(codes.Internal, "failed to get entry: %v", err)
 	}
 
-	signedEntry, err := s.convertPairToSignedEntry(pair)
+	signedEntry, err := s.gslocConsul.ConvertPairToSignedEntry(pair)
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +154,7 @@ func (s *Server) GetEntryWithStatus(ctx context.Context, request *gslbsvc.GetEnt
 		return nil, status.Errorf(codes.Internal, "failed to get entry: %v", err)
 	}
 
-	signedEntry, err := s.convertPairToSignedEntry(pair)
+	signedEntry, err := s.gslocConsul.ConvertPairToSignedEntry(pair)
 	if err != nil {
 		return nil, err
 	}
@@ -226,24 +164,12 @@ func (s *Server) GetEntryWithStatus(ctx context.Context, request *gslbsvc.GetEnt
 	}, nil
 }
 
-func (s *Server) convertPairToSignedEntry(pair *consul.KVPair) (*entries.SignedEntry, error) {
-	if pair == nil {
-		return nil, status.Errorf(codes.NotFound, "entry not found")
-	}
-	signedEntry := &entries.SignedEntry{}
-	err := protojson.Unmarshal(pair.Value, signedEntry)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to unmarshal entry: %v", err)
-	}
-	return signedEntry, nil
-}
-
 func (s *Server) ListEntries(ctx context.Context, request *gslbsvc.ListEntriesRequest) (*gslbsvc.ListEntriesResponse, error) {
 	err := request.ValidateAll()
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
 	}
-	signedEnts, err := s.listEntries(request.GetPrefix(), request.GetTags())
+	signedEnts, err := s.gslocConsul.ListEntries(request.GetPrefix(), request.GetTags())
 	if err != nil {
 		return nil, err
 	}
@@ -257,43 +183,4 @@ func (s *Server) ListEntries(ctx context.Context, request *gslbsvc.ListEntriesRe
 	return &gslbsvc.ListEntriesResponse{
 		Entries: ents,
 	}, nil
-}
-
-func (s *Server) listEntries(prefix string, tags []string) ([]*entries.SignedEntry, error) {
-	pairs, _, err := s.consulClient.KV().List(config.ConsulKVEntriesPrefix+prefix, nil)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to list entries: %v", err)
-	}
-
-	ents := make([]*entries.SignedEntry, 0, len(pairs))
-	for _, pair := range pairs {
-		signedEntry, err := s.convertPairToSignedEntry(pair)
-		if err != nil {
-			return nil, err
-		}
-		hasTag := true
-		for _, tag := range tags {
-			if !lo.Contains[string](signedEntry.GetEntry().GetTags(), tag) {
-				hasTag = false
-				break
-			}
-		}
-		if !hasTag {
-			continue
-		}
-		ents = append(ents, signedEntry)
-	}
-	return ents, nil
-}
-
-func (s *Server) retrieveSignedEntry(fqdn string) (*entries.SignedEntry, error) {
-	pair, _, err := s.consulClient.KV().Get(config.ConsulKVEntriesPrefix+fqdn, nil)
-	if err != nil {
-		return nil, err
-	}
-	signedEntry, err := s.convertPairToSignedEntry(pair)
-	if err != nil {
-		return nil, err
-	}
-	return signedEntry, nil
 }

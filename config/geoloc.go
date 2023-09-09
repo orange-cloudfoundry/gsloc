@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/oschwald/geoip2-golang"
 	"net"
+	"net/url"
 )
 
 type GeoLoc struct {
@@ -88,4 +89,20 @@ func (c *CIDR) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 	c.IpNet = ipNet
 	return nil
+}
+
+type URLConfig struct {
+	URL *url.URL
+	Raw string
+}
+
+func (uc *URLConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var s string
+	err := unmarshal(&s)
+	if err != nil {
+		return err
+	}
+	uc.Raw = s
+	uc.URL, err = url.Parse(s)
+	return err
 }

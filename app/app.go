@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	consul "github.com/hashicorp/consul/api"
 	"github.com/orange-cloudfoundry/gsloc/config"
@@ -9,6 +10,7 @@ import (
 	"github.com/orange-cloudfoundry/gsloc/geolocs"
 	"github.com/orange-cloudfoundry/gsloc/healthchecks"
 	"github.com/orange-cloudfoundry/gsloc/lb"
+	"github.com/orange-cloudfoundry/gsloc/proxmetrics"
 	"github.com/orange-cloudfoundry/gsloc/regs"
 	"github.com/orange-cloudfoundry/gsloc/resolvers"
 	"github.com/orange-cloudfoundry/gsloc/rets"
@@ -16,6 +18,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"net"
+	"net/url"
 	"os"
 	"os/signal"
 	"sync"
@@ -44,6 +47,7 @@ type App struct {
 	geoLoc       *geolocs.GeoLoc
 	hcHandler    *healthchecks.HcHandler
 	grpcServer   *grpc.Server
+	gslocConsul  *disco.GslocConsul
 	onlyServeDns bool
 	noServeDns   bool
 }
@@ -61,6 +65,10 @@ func NewApp(cnf *config.Config, onlyServeDns, noServeDns bool) (*App, error) {
 	err := app.loadConsulClient()
 	if err != nil {
 		return nil, fmt.Errorf("app loadConsulClient: %w", err)
+	}
+	err = app.loadGslocConsul()
+	if err != nil {
+		return nil, fmt.Errorf("app loadGslocConsul: %w", err)
 	}
 	err = app.loadConsulDiscoverer()
 	if err != nil {
@@ -137,6 +145,36 @@ func (a *App) loadRetriever() error {
 		retriever.DisableCatalogPolling()
 	}
 	a.retriever = retriever
+	return nil
+}
+
+func (a *App) makeMetricsProxy() *proxmetrics.Fetcher {
+	rawConsul := fmt.Sprintf("%s://%s/v1/agent/metrics?format=prometheus", a.cnf.ConsulConfig.Scheme, a.cnf.ConsulConfig.Addr)
+	consulUrl, _ := url.Parse(rawConsul) // nolint
+	a.cnf.MetricsConfig.ProxyMetricsConfig.Targets = append(
+		a.cnf.MetricsConfig.ProxyMetricsConfig.Targets,
+		&config.ProxyMetricsTarget{
+			Name: "consul",
+			URL: config.URLConfig{
+				URL: consulUrl,
+				Raw: rawConsul,
+			},
+		},
+	)
+	return proxmetrics.NewFetcher(
+		proxmetrics.NewScraper(&tls.Config{
+			InsecureSkipVerify: true,
+		}),
+		a.cnf.MetricsConfig.ProxyMetricsConfig.Targets,
+	)
+}
+
+func (a *App) loadGslocConsul() error {
+	if a.onlyServeDns {
+		a.entry.Info("Only serve DNS: no gsloc consul for api")
+		return nil
+	}
+	a.gslocConsul = disco.NewGslocConsul(a.consulClient)
 	return nil
 }
 
@@ -223,7 +261,11 @@ func (a *App) Run() error {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			grpcServer := servers.NewHTTPServer(a.cnf.HTTPServer, a.hcHandler, a.grpcServer)
+			grpcServer := servers.NewHTTPServer(
+				a.cnf.HTTPServer,
+				a.hcHandler, a.grpcServer,
+				a.makeMetricsProxy(), proxmetrics.NewStatusCollector(a.gslocConsul),
+			)
 			grpcServer.Run(a.ctx)
 		}()
 	}

@@ -16,7 +16,7 @@ func (s *Server) SetHealthCheck(ctx context.Context, request *gslbsvc.SetHealthC
 	}
 
 	fqdn := dns.CanonicalName(request.GetFqdn())
-	signedEntry, err := s.retrieveSignedEntry(fqdn)
+	signedEntry, err := s.gslocConsul.RetrieveSignedEntry(fqdn)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +36,7 @@ func (s *Server) GetHealthCheck(ctx context.Context, request *gslbsvc.GetHealthC
 	}
 	fqdn := dns.CanonicalName(request.GetFqdn())
 
-	signedEntry, err := s.retrieveSignedEntry(fqdn)
+	signedEntry, err := s.gslocConsul.RetrieveSignedEntry(fqdn)
 	if err != nil {
 		return nil, err
 	}
