@@ -169,6 +169,24 @@ func (a *App) makeMetricsProxy() *proxmetrics.Fetcher {
 	)
 }
 
+func (a *App) makeStatusHandler() *proxmetrics.StatusHandler {
+	_, local4, _ := net.ParseCIDR("127.0.0.1/32") // nolint:errcheck
+	_, local6, _ := net.ParseCIDR("::1/128")      // nolint:errcheck
+	allowed := []*config.CIDR{
+		{
+			IpNet: local4,
+		},
+		{
+			IpNet: local6,
+		},
+	}
+	return proxmetrics.NewStatusHandler(
+		proxmetrics.NewStatusCollector(a.gslocConsul),
+		append(allowed, a.cnf.MetricsConfig.AllowedInspect...),
+		a.cnf.MetricsConfig.TrustXFF,
+	)
+}
+
 func (a *App) loadGslocConsul() error {
 	if a.onlyServeDns {
 		a.entry.Info("Only serve DNS: no gsloc consul for api")
@@ -264,7 +282,7 @@ func (a *App) Run() error {
 			grpcServer := servers.NewHTTPServer(
 				a.cnf.HTTPServer,
 				a.hcHandler, a.grpcServer,
-				a.makeMetricsProxy(), proxmetrics.NewStatusCollector(a.gslocConsul),
+				a.makeMetricsProxy(), a.makeStatusHandler(),
 			)
 			grpcServer.Run(a.ctx)
 		}()

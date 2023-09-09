@@ -2,11 +2,14 @@ package proxmetrics
 
 import (
 	gslbsvc "github.com/orange-cloudfoundry/gsloc-go-sdk/gsloc/services/gslb/v1"
+	"github.com/orange-cloudfoundry/gsloc/config"
 	"github.com/orange-cloudfoundry/gsloc/disco"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
+	"net"
 	"net/http"
+	"strings"
 )
 
 type StatusCollector struct {
@@ -14,12 +17,58 @@ type StatusCollector struct {
 	gslocConsul *disco.GslocConsul
 }
 
-func StatusHandler(collector *StatusCollector) http.Handler {
+type StatusHandler struct {
+	metricHandler  http.Handler
+	allowedInspect []*config.CIDR
+	trustXFF       bool
+}
+
+func NewStatusHandler(collector *StatusCollector, allowedInspect []*config.CIDR, trustXFF bool) *StatusHandler {
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(collector)
-	return promhttp.InstrumentMetricHandler(
-		registry, promhttp.HandlerFor(registry, promhttp.HandlerOpts{}),
-	)
+	return &StatusHandler{
+		metricHandler: promhttp.InstrumentMetricHandler(
+			registry, promhttp.HandlerFor(registry, promhttp.HandlerOpts{}),
+		),
+		allowedInspect: allowedInspect,
+		trustXFF:       trustXFF,
+	}
+}
+
+func (s *StatusHandler) isAllowedInspect(req *http.Request) bool {
+	if s.remoteAddrIsAllowed(req.RemoteAddr) {
+		return true
+	}
+	if !s.trustXFF || req.Header.Get("X-Forwarded-For") == "" {
+		return false
+	}
+	allIps := strings.Split(req.Header.Get("X-Forwarded-For"), ",")
+	if s.remoteAddrIsAllowed(allIps[0]) {
+		return true
+	}
+	return false
+}
+
+func (s *StatusHandler) remoteAddrIsAllowed(remoteAddr string) bool {
+	if strings.Contains(remoteAddr, ":") {
+		remoteAddr, _, _ = net.SplitHostPort(remoteAddr) // nolint: errcheck
+	}
+	remoteAddrIp := net.ParseIP(remoteAddr)
+	for _, cidr := range s.allowedInspect {
+		if cidr.IpNet.Contains(remoteAddrIp) {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *StatusHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if !s.isAllowedInspect(r) {
+		http.Error(w, "Not allowed", http.StatusForbidden)
+		return
+	}
+	s.metricHandler.ServeHTTP(w, r)
+	return
 }
 
 func NewStatusCollector(gslocConsul *disco.GslocConsul) *StatusCollector {

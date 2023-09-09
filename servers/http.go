@@ -16,12 +16,12 @@ import (
 )
 
 type HTTPServer struct {
-	mux             *mux.Router
-	cnf             *config.HTTPServerConfig
-	hcker           *healthchecks.HcHandler
-	grpcServ        *grpc.Server
-	metricsFetcher  *proxmetrics.Fetcher
-	statusCollector *proxmetrics.StatusCollector
+	mux            *mux.Router
+	cnf            *config.HTTPServerConfig
+	hcker          *healthchecks.HcHandler
+	grpcServ       *grpc.Server
+	metricsFetcher *proxmetrics.Fetcher
+	statusHandler  *proxmetrics.StatusHandler
 }
 
 func NewHTTPServer(
@@ -29,15 +29,15 @@ func NewHTTPServer(
 	hcker *healthchecks.HcHandler,
 	grpcServ *grpc.Server,
 	metricsFetcher *proxmetrics.Fetcher,
-	statusCollector *proxmetrics.StatusCollector,
+	statusHandler *proxmetrics.StatusHandler,
 ) *HTTPServer {
 	return &HTTPServer{
-		mux:             mux.NewRouter(),
-		cnf:             cnf,
-		hcker:           hcker,
-		grpcServ:        grpcServ,
-		metricsFetcher:  metricsFetcher,
-		statusCollector: statusCollector,
+		mux:            mux.NewRouter(),
+		cnf:            cnf,
+		hcker:          hcker,
+		grpcServ:       grpcServ,
+		metricsFetcher: metricsFetcher,
+		statusHandler:  statusHandler,
 	}
 }
 
@@ -55,7 +55,7 @@ func (s *HTTPServer) ServeHTTP(writer http.ResponseWriter, request *http.Request
 
 func (s *HTTPServer) Run(ctx context.Context) {
 	s.mux.Path("/metrics").Handler(s.metricsFetcher)
-	s.mux.Path("/metrics/status").Handler(proxmetrics.StatusHandler(s.statusCollector))
+	s.mux.Path("/metrics/status").Handler(s.statusHandler)
 	s.mux.Methods("POST").Path("/hc/{fqdn}/member/{ip}").Handler(s.hcker)
 
 	srvTls := &http.Server{

@@ -8,6 +8,8 @@ import (
 var validateNameForPath = regexp.MustCompile(`(\s|_)`).MatchString
 
 type MetricsConfig struct {
+	AllowedInspect     []*CIDR             `yaml:"allowed_inspect"`
+	TrustXFF           bool                `yaml:"trust_xff"`
 	ProxyMetricsConfig *ProxyMetricsConfig `yaml:"proxy"`
 }
 
@@ -20,6 +22,15 @@ func (u *MetricsConfig) init() error {
 		}
 	}
 	return nil
+}
+
+func (u *MetricsConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type plain MetricsConfig
+	err := unmarshal((*plain)(u))
+	if err != nil {
+		return err
+	}
+	return u.init()
 }
 
 type ProxyMetricsConfig struct {
