@@ -44,15 +44,19 @@ type App struct {
 	geoLoc       *geolocs.GeoLoc
 	hcHandler    *healthchecks.HcHandler
 	grpcServer   *grpc.Server
+	onlyServeDns bool
+	noServeDns   bool
 }
 
-func NewApp(cnf *config.Config) (*App, error) {
+func NewApp(cnf *config.Config, onlyServeDns, noServeDns bool) (*App, error) {
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	app := &App{
-		entry:      log.WithField("component", "app"),
-		cnf:        cnf,
-		ctx:        ctx,
-		cancelFunc: cancelFunc,
+		entry:        log.WithField("component", "app"),
+		cnf:          cnf,
+		ctx:          ctx,
+		cancelFunc:   cancelFunc,
+		onlyServeDns: onlyServeDns,
+		noServeDns:   noServeDns,
 	}
 	err := app.loadConsulClient()
 	if err != nil {
@@ -113,28 +117,52 @@ func (a *App) loadConsulClient() error {
 }
 
 func (a *App) loadConsulDiscoverer() error {
-	consulDisco := disco.NewConsulDiscoverer(a.consulClient, a.cnf.DcName, a.cnf.HealthCheckConfig.HealthcheckAddress)
+	if a.onlyServeDns {
+		a.entry.Info("Only serve DNS: no consul discoverer")
+		return nil
+	}
+	consulDisco := disco.NewConsulDiscoverer(
+		a.consulClient,
+		a.cnf.HealthCheckConfig.HealthcheckAuth,
+		a.cnf.DcName,
+		a.cnf.HealthCheckConfig.HealthcheckAddress,
+	)
 	a.consulDisco = consulDisco
 	return nil
 }
 
 func (a *App) loadRetriever() error {
 	retriever := rets.NewRetriever(a.cnf.DcName, 10, time.Duration(*a.cnf.ConsulConfig.ScrapInterval), a.consulClient)
+	if a.noServeDns {
+		retriever.DisableCatalogPolling()
+	}
 	a.retriever = retriever
 	return nil
 }
 
 func (a *App) loadGeoLoc() error {
+	if a.noServeDns {
+		a.entry.Info("No dns server: no geoloc loaded")
+		return nil
+	}
 	a.geoLoc = geolocs.NewGeoLoc(a.cnf.GeoLoc.DcPositions, a.cnf.GeoLoc.GeoDb.Reader)
 	return nil
 }
 
 func (a *App) loadLbFactory() error {
+	if a.noServeDns {
+		a.entry.Info("No dns server: no lb factory loaded")
+		return nil
+	}
 	a.lbFactory = lb.NewLBFactory(a.geoLoc, a.cnf.DNSServer.TrustEdns)
 	return nil
 }
 
 func (a *App) loadGSLBHandler() error {
+	if a.noServeDns {
+		a.entry.Info("No dns server: no gslb handler loaded")
+		return nil
+	}
 	_, local4, _ := net.ParseCIDR("127.0.0.1/32") // nolint:errcheck
 	_, local6, _ := net.ParseCIDR("::1/128")      // nolint:errcheck
 	allowed := []*config.CIDR{
@@ -150,14 +178,22 @@ func (a *App) loadGSLBHandler() error {
 }
 
 func (a *App) loadHcHandler() error {
-	a.hcHandler = healthchecks.NewHcHandler()
+	if a.onlyServeDns {
+		a.entry.Info("Only serve DNS: no healthcheck handler")
+		return nil
+	}
+	a.hcHandler = healthchecks.NewHcHandler(a.cnf.HealthCheckConfig)
 	return nil
 }
 
 func (a *App) register() error {
-	regs.DefaultRegCatalog.Register(a.gslbHandler)
-	regs.DefaultRegKV.Register(a.consulDisco)
-	regs.DefaultRegMember.Register(a.hcHandler)
+	if !a.noServeDns {
+		regs.DefaultRegCatalog.Register(a.gslbHandler)
+	}
+	if !a.onlyServeDns {
+		regs.DefaultRegKV.Register(a.consulDisco)
+		regs.DefaultRegMember.Register(a.hcHandler)
+	}
 	return nil
 }
 
@@ -175,19 +211,22 @@ func (a *App) Run() error {
 			log.Panicf("retriever.Run: %v", err)
 		}
 	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		dnsServer := servers.NewDNSServer(a.cnf.DNSServer, a.gslbHandler)
-		dnsServer.Run(a.ctx)
-	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		grpcServer := servers.NewHTTPServer(a.cnf.HTTPServer, a.hcHandler, a.grpcServer)
-		grpcServer.Run(a.ctx)
-	}()
-
+	if !a.noServeDns {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			dnsServer := servers.NewDNSServer(a.cnf.DNSServer, a.gslbHandler)
+			dnsServer.Run(a.ctx)
+		}()
+	}
+	if !a.onlyServeDns {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			grpcServer := servers.NewHTTPServer(a.cnf.HTTPServer, a.hcHandler, a.grpcServer)
+			grpcServer.Run(a.ctx)
+		}()
+	}
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 	s := <-sig

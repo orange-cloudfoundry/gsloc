@@ -73,6 +73,9 @@ func (a *App) makeGrpcOptions() ([]grpc.ServerOption, error) {
 }
 
 func (a *App) loadGrpcServer() error {
+	if a.onlyServeDns {
+		return nil
+	}
 	grpcOptions, err := a.makeGrpcOptions()
 	if err != nil {
 		return fmt.Errorf("agent: failed to make grpc options: %v", err)

@@ -10,6 +10,7 @@ type gslocCtxKey int
 const (
 	DNSMsg gslocCtxKey = iota
 	RemoteAddr
+	FromLocalhost
 )
 
 func SetDNSMsg(ctx context.Context, msg *dns.Msg) context.Context {

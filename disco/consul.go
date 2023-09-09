@@ -14,9 +14,14 @@ type ConsulDiscoverer struct {
 	consulClient *consul.Client
 	hcAddr       string
 	dcName       string
+	headers      map[string][]string
 }
 
-func NewConsulDiscoverer(consulClient *consul.Client, dcName, hcAddr string) *ConsulDiscoverer {
+func NewConsulDiscoverer(consulClient *consul.Client, basicAuth *config.BasicAuth, dcName, hcAddr string) *ConsulDiscoverer {
+	headers := make(map[string][]string)
+	if basicAuth != nil {
+		headers["Authorization"] = []string{fmt.Sprintf("Basic %s", basicAuth.GetBasicAuth())}
+	}
 	return &ConsulDiscoverer{
 		consulClient: consulClient,
 		hcAddr:       hcAddr,
@@ -69,8 +74,9 @@ func (cd *ConsulDiscoverer) registerMembers(entry *entries.SignedEntry, members 
 				Interval:      entry.GetHealthcheck().GetInterval().AsDuration().String(),
 				Timeout:       entry.GetHealthcheck().GetTimeout().AsDuration().String(),
 				TLSSkipVerify: true,
-				HTTP:          fmt.Sprintf("https://%s/hc/%s/member/%s", cd.hcAddr, entry.GetEntry().GetFqdn(), member.GetIp()),
+				HTTP:          fmt.Sprintf("%s/hc/%s/member/%s", cd.hcAddr, entry.GetEntry().GetFqdn(), member.GetIp()),
 				Method:        "POST",
+				Header:        cd.headers,
 				Body:          string(hcBytes),
 			},
 		})

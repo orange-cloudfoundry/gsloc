@@ -14,7 +14,9 @@ var (
 )
 
 type ServeCmd struct {
-	ConfigPath string `required:"" short:"c" help:"path to the configuration file" type:"path" default:"./config.yml"`
+	ConfigPath   string `required:"" short:"c" help:"path to the configuration file" type:"path" default:"./config.yml"`
+	OnlyServeDns bool   `help:"only serve dns and remove api, healthcheck and consul registering. This is for separate dns (data-plane) and backend/api (control-plane)" default:"false"`
+	NoServeDns   bool   `help:"do not serve dns server and only have api, healthcheck and and consul registering. This is for separate dns (data-plane) and backend/api (control-plane)" default:"false"`
 }
 
 func (r *ServeCmd) Run() error {
@@ -22,7 +24,7 @@ func (r *ServeCmd) Run() error {
 	if err != nil {
 		return fmt.Errorf("read config: %s", err)
 	}
-	appRun, err := app.NewApp(cnf)
+	appRun, err := app.NewApp(cnf, r.OnlyServeDns, r.NoServeDns)
 	if err != nil {
 		return fmt.Errorf("create app: %s", err)
 	}

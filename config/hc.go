@@ -1,7 +1,9 @@
 package config
 
 type HealthCheckConfig struct {
-	HealthcheckAddress string `yaml:"healthcheck_address"`
+	HealthcheckAddress string     `yaml:"healthcheck_address"`
+	HealthcheckAuth    *BasicAuth `yaml:"healthcheck_auth"`
+	AllowOnlyLocalhost bool       `yaml:"allow_only_localhost"`
 }
 
 func (c *HealthCheckConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {

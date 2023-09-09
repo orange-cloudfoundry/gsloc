@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/base64"
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -61,7 +62,13 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		if err != nil {
 			return fmt.Errorf("split host port: %w", err)
 		}
-		c.HealthCheckConfig.HealthcheckAddress = fmt.Sprintf("127.0.0.1:%s", port)
+		scheme := "https"
+		if c.HTTPServer.ListenLocalPort != 0 {
+			scheme = "http"
+			port = fmt.Sprintf("%d", c.HTTPServer.ListenLocalPort)
+		}
+		c.HealthCheckConfig.HealthcheckAddress = fmt.Sprintf("%s://127.0.0.1:%s", scheme, port)
+
 	}
 	if c.ConsulConfig == nil {
 		return fmt.Errorf("consul_config is required")
@@ -76,8 +83,9 @@ func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 type HTTPServerConfig struct {
-	Listen string `yaml:"listen"`
-	TLSPem TLSPem `yaml:"tls_pem"`
+	Listen          string `yaml:"listen"`
+	ListenLocalPort uint   `yaml:"listen_local_port"`
+	TLSPem          TLSPem `yaml:"tls_pem"`
 }
 
 func (c *HTTPServerConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -101,6 +109,31 @@ func (c *HTTPServerConfig) UnmarshalYAML(unmarshal func(interface{}) error) erro
 type TLSPem struct {
 	CertPath       string `yaml:"cert_path"`
 	PrivateKeyPath string `yaml:"private_key_path"`
+}
+
+type BasicAuth struct {
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
+}
+
+func (c *BasicAuth) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	type plain BasicAuth
+	err := unmarshal((*plain)(c))
+	if err != nil {
+		return err
+	}
+	if c.Username == "" {
+		return fmt.Errorf("username is required")
+	}
+	if c.Password == "" {
+		return fmt.Errorf("password is required")
+	}
+	return nil
+}
+
+func (c *BasicAuth) GetBasicAuth() string {
+	auth := c.Username + ":" + c.Password
+	return base64.StdEncoding.EncodeToString([]byte(auth))
 }
 
 type ConsulConfig struct {

@@ -26,6 +26,7 @@ type Retriever struct {
 	dcName          string
 	nbWorkers       int
 	interval        time.Duration
+	disableCatPoll  bool
 }
 
 func NewRetriever(dcName string, nbWorkers int, interval time.Duration, consulClient *consul.Client) *Retriever {
@@ -40,22 +41,31 @@ func NewRetriever(dcName string, nbWorkers int, interval time.Duration, consulCl
 	}
 }
 
+func (r *Retriever) DisableCatalogPolling() {
+	r.disableCatPoll = true
+}
+
 func (r *Retriever) Run(ctx context.Context) error {
 	r.entry.Info("starting retriever ...")
 	err := r.pollKV()
 	if err != nil {
 		r.entry.WithError(err).Error("error while polling kv")
 	}
-	err = r.pollCatalog()
-	if err != nil {
-		r.entry.WithError(err).Error("error while polling catalog")
+	if !r.disableCatPoll {
+		err := r.pollCatalog()
+		if err != nil {
+			r.entry.WithError(err).Error("error while polling catalog")
+		}
 	}
+
 	go func() {
 		r.runKV(ctx)
 	}()
-	go func() {
-		r.runCatalog(ctx)
-	}()
+	if !r.disableCatPoll {
+		go func() {
+			r.runCatalog(ctx)
+		}()
+	}
 	<-ctx.Done()
 	r.entry.Info("retriever stopped")
 	return nil

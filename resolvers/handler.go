@@ -17,8 +17,9 @@ import (
 )
 
 const (
-	defaultTtl    = 60
-	allMemberHost = "_all."
+	defaultTtl        = 60
+	allMemberHost     = "_all."
+	getAllEntriesFqdn = "all.entries.gsloc."
 )
 
 type entryRef struct {
@@ -84,11 +85,14 @@ func (h *GSLBHandler) ServeDNS(w dns.ResponseWriter, msg *dns.Msg) {
 }
 
 func (h *GSLBHandler) Resolve(ctx context.Context, fqdn string, queryType uint16) []dns.RR {
-	seeAll := false
+	if queryType == dns.TypeTXT && fqdn == getAllEntriesFqdn && h.isAllowedInspect(ctx) {
+		return h.answerAllEntries()
+	}
 
+	seeAllMembers := false
 	if fqdn[:len(allMemberHost)] == allMemberHost {
 		fqdn = fqdn[len(allMemberHost):]
-		seeAll = true
+		seeAllMembers = true
 	}
 	entryRefRaw, ok := h.entries.Load(fqdn)
 	if !ok {
@@ -122,7 +126,7 @@ func (h *GSLBHandler) Resolve(ctx context.Context, fqdn string, queryType uint16
 	if er.entry.GetTtl() > 0 {
 		ttl = int(er.entry.GetTtl())
 	}
-	if seeAll && h.isAllowedInspect(ctx) {
+	if seeAllMembers && h.isAllowedInspect(ctx) {
 		return h.seeAll(er.entry, queryType)
 	}
 	members, err := h.findMembers(ctx, er, memberType)
@@ -153,6 +157,23 @@ func (h *GSLBHandler) isAllowedInspect(ctx context.Context) bool {
 		}
 	}
 	return false
+}
+
+func (h *GSLBHandler) answerAllEntries() []dns.RR {
+	rrs := make([]dns.RR, 0)
+	h.entries.Range(func(key, value interface{}) bool {
+		entryRef := value.(entryRef)
+		rr, err := dns.NewRR(
+			fmt.Sprintf("%s IN TXT %s", getAllEntriesFqdn, entryRef.entry.GetFqdn()),
+		)
+		if err != nil {
+			log.Errorf("error creating dns RR: %s", err.Error())
+			return true
+		}
+		rrs = append(rrs, rr)
+		return true
+	})
+	return rrs
 }
 
 func (h *GSLBHandler) answerJson(entry *entries.Entry) []dns.RR {
