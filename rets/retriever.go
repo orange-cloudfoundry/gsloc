@@ -157,7 +157,7 @@ func (r *Retriever) pollKV() error {
 			r.signEntsCached.Delete(fqdn)
 		}
 
-		_, ok = r.signEntsCached.Load(fqdn)
+		_, ok = r.signCheckCached.Load(fqdn)
 		if ok {
 			observe.EmitCatalogEntry(observe.EventTypeDelete, entry.Entry)
 			r.signCheckCached.Delete(fqdn)
@@ -246,6 +246,29 @@ func (r *Retriever) pollCatalog() error {
 	}
 	p.Wait()
 	return nil
+}
+
+func (r *Retriever) ListEntries(prefix string) []*entries.SignedEntry {
+	ents := make([]*entries.SignedEntry, 0)
+	r.signEntsCached.Range(func(key, value interface{}) bool {
+		if prefix == "" {
+			ents = append(ents, value.(*entries.SignedEntry))
+			return true
+		}
+		if strings.HasPrefix(key.(string), prefix) {
+			ents = append(ents, value.(*entries.SignedEntry))
+		}
+		return true
+	})
+	return ents
+}
+
+func (r *Retriever) GetEntry(fqdn string) (*entries.SignedEntry, bool) {
+	rawEntry, ok := r.signEntsCached.Load(fqdn)
+	if !ok {
+		return nil, false
+	}
+	return rawEntry.(*entries.SignedEntry), true
 }
 
 func (r *Retriever) consulEntryToMember(consulEnt *consul.ServiceEntry) *entries.Member {

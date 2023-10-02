@@ -12,7 +12,6 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/emptypb"
-	"strings"
 )
 
 func (s *Server) SetEntry(ctx context.Context, request *gslbsvc.SetEntryRequest) (*emptypb.Empty, error) {
@@ -121,15 +120,7 @@ func (s *Server) GetEntry(ctx context.Context, request *gslbsvc.GetEntryRequest)
 	}
 
 	fqdn := dns.CanonicalName(request.GetFqdn())
-	pair, _, err := s.consulClient.KV().Get(config.ConsulKVEntriesPrefix+fqdn, nil)
-	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			return nil, status.Errorf(codes.NotFound, "entry not found")
-		}
-		return nil, status.Errorf(codes.Internal, "failed to get entry: %v", err)
-	}
-
-	signedEntry, err := s.gslocConsul.ConvertPairToSignedEntry(pair)
+	signedEntry, err := s.gslocConsul.RetrieveSignedEntry(fqdn)
 	if err != nil {
 		return nil, err
 	}
@@ -146,18 +137,11 @@ func (s *Server) GetEntryWithStatus(ctx context.Context, request *gslbsvc.GetEnt
 	}
 
 	fqdn := dns.CanonicalName(request.GetFqdn())
-	pair, _, err := s.consulClient.KV().Get(config.ConsulKVEntriesPrefix+fqdn, nil)
-	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			return nil, status.Errorf(codes.NotFound, "entry not found")
-		}
-		return nil, status.Errorf(codes.Internal, "failed to get entry: %v", err)
-	}
-
-	signedEntry, err := s.gslocConsul.ConvertPairToSignedEntry(pair)
+	signedEntry, err := s.gslocConsul.RetrieveSignedEntry(fqdn)
 	if err != nil {
 		return nil, err
 	}
+
 	return &gslbsvc.GetEntryResponse{
 		Entry:       signedEntry.GetEntry(),
 		Healthcheck: signedEntry.GetHealthcheck(),
