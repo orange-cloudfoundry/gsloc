@@ -80,6 +80,10 @@ func (wrr *WeightedRoundRobin) Reset() error {
 	return nil
 }
 
+func (wrr *WeightedRoundRobin) Name() string {
+	return "weighted_round_robin"
+}
+
 func membersToWeightedRef(members []*entries.Member) *weightedRef {
 	wr := &weightedRef{
 		gcd:           0,

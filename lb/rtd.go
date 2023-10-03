@@ -40,3 +40,7 @@ func (rtd *Random) Next(_ context.Context, memberType MemberType) (*entries.Memb
 func (rtd *Random) Reset() error {
 	return nil
 }
+
+func (rtd *Random) Name() string {
+	return "random"
+}

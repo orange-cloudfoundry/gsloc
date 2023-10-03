@@ -3,7 +3,6 @@ package lb
 import (
 	"context"
 	"fmt"
-	"github.com/miekg/dns"
 	"github.com/orange-cloudfoundry/gsloc-go-sdk/gsloc/api/config/entries/v1"
 	"github.com/orange-cloudfoundry/gsloc/contexes"
 	"github.com/orange-cloudfoundry/gsloc/geolocs"
@@ -19,14 +18,12 @@ type Topology struct {
 	possibleDcsAll  []string
 	possibleDcsIpv4 []string
 	possibleDcsIpv6 []string
-	trustEdns       bool
 }
 
-func NewTopology(entry *entries.Entry, geoLoc *geolocs.GeoLoc, trustEdns bool) *Topology {
+func NewTopology(entry *entries.Entry, geoLoc *geolocs.GeoLoc) *Topology {
 	return &Topology{
 		geoLoc:          geoLoc,
 		entry:           entry,
-		trustEdns:       trustEdns,
 		possibleDcsAll:  extractDc(append(entry.GetMembersIpv4(), entry.GetMembersIpv6()...)),
 		possibleDcsIpv4: extractDc(entry.GetMembersIpv4()),
 		possibleDcsIpv6: extractDc(entry.GetMembersIpv6()),
@@ -69,27 +66,15 @@ func (t *Topology) Next(ctx context.Context, memberType MemberType) (*entries.Me
 }
 
 func (t *Topology) findRemoteAddr(ctx context.Context) string {
-	ip := contexes.GetRemoteAddr(ctx)
-	if !t.trustEdns {
-		return ip
-	}
-	msg := contexes.GetDNSMsg(ctx)
-	if msg == nil {
-		return ip
-	}
-	if o := msg.IsEdns0(); o != nil {
-		for _, s := range o.Option {
-			if e, ok := s.(*dns.EDNS0_SUBNET); ok {
-				ip = e.Address.String()
-				break
-			}
-		}
-	}
-	return ip
+	return contexes.GetRemoteAddr(ctx)
 }
 
 func (t *Topology) Reset() error {
 	return nil
+}
+
+func (t *Topology) Name() string {
+	return "topology"
 }
 
 func membersToMapDc(members []*entries.Member) map[string][]*entries.Member {

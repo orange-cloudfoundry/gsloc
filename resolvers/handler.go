@@ -32,13 +32,15 @@ type entryRef struct {
 type GSLBHandler struct {
 	entries        *sync.Map
 	lbFactory      *lb.LBFactory
+	trustEdns      bool
 	allowedInspect []*config.CIDR
 }
 
-func NewGSLBHandler(lbFactory *lb.LBFactory, allowedInspect []*config.CIDR) *GSLBHandler {
+func NewGSLBHandler(lbFactory *lb.LBFactory, trustEdns bool, allowedInspect []*config.CIDR) *GSLBHandler {
 	return &GSLBHandler{
 		entries:        &sync.Map{},
 		lbFactory:      lbFactory,
+		trustEdns:      trustEdns,
 		allowedInspect: allowedInspect,
 	}
 }
@@ -60,6 +62,15 @@ func (h *GSLBHandler) ServeDNS(w dns.ResponseWriter, msg *dns.Msg) {
 	remoteAddr, _, err := net.SplitHostPort(w.RemoteAddr().String())
 	if err != nil {
 		log.Errorf("error parsing remote addr: %s", err)
+	}
+	o := msg.IsEdns0()
+	if o != nil && h.trustEdns {
+		for _, s := range o.Option {
+			if e, ok := s.(*dns.EDNS0_SUBNET); ok {
+				remoteAddr = e.Address.String()
+				break
+			}
+		}
 	}
 	ctx := contexes.SetRemoteAddr(context.Background(), remoteAddr)
 	ctx = contexes.SetDNSMsg(ctx, msg)
@@ -112,7 +123,7 @@ func (h *GSLBHandler) Resolve(ctx context.Context, fqdn string, queryType uint16
 		if !h.isAllowedInspect(ctx) {
 			return []dns.RR{}
 		}
-		return h.answerJson(er.entry)
+		return h.answerJson(ctx, er.entry)
 	case dns.TypeA:
 		memberType = lb.Ipv4
 	case dns.TypeAAAA:
@@ -127,11 +138,12 @@ func (h *GSLBHandler) Resolve(ctx context.Context, fqdn string, queryType uint16
 		ttl = int(er.entry.GetTtl())
 	}
 	if seeAllMembers && h.isAllowedInspect(ctx) {
-		return h.seeAll(er.entry, queryType)
+		return h.seeAll(ctx, er.entry, queryType)
 	}
 	members, err := h.findMembers(ctx, er, memberType)
 	if err != nil {
 		log.Errorf("error finding members: %s", err.Error())
+		stats.AddQueryFailed(ctx, er.entry.GetFqdn(), queryTypeStr)
 		return []dns.RR{}
 	}
 	if len(members) == 0 {
@@ -148,7 +160,7 @@ func (h *GSLBHandler) Resolve(ctx context.Context, fqdn string, queryType uint16
 		}
 		rrs = append(rrs, rr)
 	}
-
+	stats.AddQuerySuccess(ctx, er.entry.GetFqdn(), queryTypeStr)
 	return rrs
 }
 
@@ -179,7 +191,7 @@ func (h *GSLBHandler) answerAllEntries() []dns.RR {
 	return rrs
 }
 
-func (h *GSLBHandler) answerJson(entry *entries.Entry) []dns.RR {
+func (h *GSLBHandler) answerJson(ctx context.Context, entry *entries.Entry) []dns.RR {
 	var b []byte
 	// could not happen error here
 	b, _ = protojson.Marshal(entry) // nolint: errcheck
@@ -188,13 +200,15 @@ func (h *GSLBHandler) answerJson(entry *entries.Entry) []dns.RR {
 		fmt.Sprintf("%s IN TXT %s", entry.GetFqdn(), base64.StdEncoding.EncodeToString(b)),
 	)
 	if err != nil {
+		stats.AddQueryFailed(ctx, entry.GetFqdn(), "TXT")
 		log.Errorf("error creating dns RR: %s", err.Error())
 		return []dns.RR{}
 	}
+	stats.AddQuerySuccess(ctx, entry.GetFqdn(), "TXT")
 	return []dns.RR{rr}
 }
 
-func (h *GSLBHandler) seeAll(entry *entries.Entry, queryType uint16) []dns.RR {
+func (h *GSLBHandler) seeAll(ctx context.Context, entry *entries.Entry, queryType uint16) []dns.RR {
 	var members []*entries.Member
 	switch queryType {
 	case dns.TypeA:
@@ -217,6 +231,7 @@ func (h *GSLBHandler) seeAll(entry *entries.Entry, queryType uint16) []dns.RR {
 		}
 		rrs = append(rrs, rr)
 	}
+	stats.AddQuerySuccess(ctx, entry.GetFqdn(), dns.TypeToString[queryType])
 	return rrs
 }
 
@@ -256,6 +271,11 @@ func (h *GSLBHandler) findMember(ctx context.Context, er entryRef, memberType lb
 	}
 	nextMember, err := lbler.Next(ctx, memberType)
 	if err == nil {
+		if prevErr != nil {
+			stats.AddAlternate(er.entry.GetFqdn(), lbler.Name())
+		} else {
+			stats.AddPreferred(er.entry.GetFqdn(), lbler.Name())
+		}
 		return nextMember, nil
 	}
 	if prevErr == nil {
@@ -268,5 +288,6 @@ func (h *GSLBHandler) findMember(ctx context.Context, er entryRef, memberType lb
 		result = multierror.Append(result, err)
 		return nil, fmt.Errorf("error finding member: %s", result.Error())
 	}
+	stats.AddFallback(er.entry.GetFqdn(), er.lbFallback.Name())
 	return nextMember, nil
 }

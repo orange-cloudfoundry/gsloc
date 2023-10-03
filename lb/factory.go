@@ -10,10 +10,9 @@ type LBFactory struct {
 	trustEdns bool
 }
 
-func NewLBFactory(geoLoc *geolocs.GeoLoc, trustEdns bool) *LBFactory {
+func NewLBFactory(geoLoc *geolocs.GeoLoc) *LBFactory {
 	return &LBFactory{
-		geoLoc:    geoLoc,
-		trustEdns: trustEdns,
+		geoLoc: geoLoc,
 	}
 }
 
@@ -24,7 +23,7 @@ func (f *LBFactory) MakeLb(entry *entries.Entry, algo entries.LBAlgo) Loadbalanc
 	case entries.LBAlgo_RATIO:
 		return NewWeightedRoundRobin(entry)
 	case entries.LBAlgo_TOPOLOGY:
-		return NewTopology(entry, f.geoLoc, f.trustEdns)
+		return NewTopology(entry, f.geoLoc)
 	case entries.LBAlgo_RANDOM:
 		return NewRandom(entry)
 	}

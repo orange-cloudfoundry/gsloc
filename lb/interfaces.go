@@ -16,4 +16,6 @@ const (
 type Loadbalancer interface {
 	Next(ctx context.Context, memberType MemberType) (*entries.Member, error)
 	Reset() error
+
+	Name() string
 }

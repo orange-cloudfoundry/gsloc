@@ -59,3 +59,7 @@ func (rr *RoundRobin) Reset() error {
 	rr.numberIpv6.Store(0)
 	return nil
 }
+
+func (rr *RoundRobin) Name() string {
+	return "round_robin"
+}

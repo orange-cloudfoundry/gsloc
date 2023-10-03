@@ -210,7 +210,7 @@ func (a *App) loadLbFactory() error {
 		a.entry.Info("No dns server: no lb factory loaded")
 		return nil
 	}
-	a.lbFactory = lb.NewLBFactory(a.geoLoc, a.cnf.DNSServer.TrustEdns)
+	a.lbFactory = lb.NewLBFactory(a.geoLoc)
 	return nil
 }
 
@@ -229,7 +229,7 @@ func (a *App) loadGSLBHandler() error {
 			IpNet: local6,
 		},
 	}
-	a.gslbHandler = resolvers.NewGSLBHandler(a.lbFactory, append(allowed, a.cnf.DNSServer.AllowedInspect...))
+	a.gslbHandler = resolvers.NewGSLBHandler(a.lbFactory, a.cnf.DNSServer.TrustEdns, append(allowed, a.cnf.DNSServer.AllowedInspect...))
 	return nil
 }
 
