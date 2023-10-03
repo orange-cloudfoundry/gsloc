@@ -149,7 +149,11 @@ func (a *App) loadRetriever() error {
 }
 
 func (a *App) makeMetricsProxy() *proxmetrics.Fetcher {
-	rawConsul := fmt.Sprintf("%s://%s/v1/agent/metrics?format=prometheus", a.cnf.ConsulConfig.Scheme, a.cnf.ConsulConfig.Addr)
+	rawConsul := fmt.Sprintf("%s://%s/v1/agent/metrics?format=prometheus&token=%s",
+		a.cnf.ConsulConfig.Scheme,
+		a.cnf.ConsulConfig.Addr,
+		a.cnf.ConsulConfig.Token,
+	)
 	consulUrl, _ := url.Parse(rawConsul) // nolint
 	a.cnf.MetricsConfig.ProxyMetricsConfig.Targets = append(
 		a.cnf.MetricsConfig.ProxyMetricsConfig.Targets,
