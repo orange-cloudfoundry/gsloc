@@ -52,7 +52,7 @@ var stats = metrics{
 		Namespace: "gsloc",
 		Subsystem: "dns_handler",
 		Name:      "query_failed",
-		Help:      "Number of query of type A failing",
+		Help:      "Number of query of type given failing",
 	}, []string{
 		"fqdn",
 		"query_type",
