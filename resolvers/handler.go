@@ -97,7 +97,7 @@ func (h *GSLBHandler) ServeDNS(w dns.ResponseWriter, msg *dns.Msg) {
 
 func (h *GSLBHandler) Resolve(ctx context.Context, fqdn string, queryType uint16) []dns.RR {
 	if queryType == dns.TypeTXT && fqdn == getAllEntriesFqdn && h.isAllowedInspect(ctx) {
-		return h.answerAllEntries()
+		return h.answerAllEntries(ctx)
 	}
 
 	seeAllMembers := false
