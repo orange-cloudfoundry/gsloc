@@ -174,7 +174,7 @@ func (h *GSLBHandler) isAllowedInspect(ctx context.Context) bool {
 	return false
 }
 
-func (h *GSLBHandler) answerAllEntries() []dns.RR {
+func (h *GSLBHandler) answerAllEntries(ctx context.Context) []dns.RR {
 	rrs := make([]dns.RR, 0)
 	h.entries.Range(func(key, value interface{}) bool {
 		entryRef := value.(entryRef)
@@ -188,6 +188,7 @@ func (h *GSLBHandler) answerAllEntries() []dns.RR {
 		rrs = append(rrs, rr)
 		return true
 	})
+	stats.AddQuerySuccess(ctx, getAllEntriesFqdn, "TXT")
 	return rrs
 }
 
@@ -221,9 +222,10 @@ func (h *GSLBHandler) seeAll(ctx context.Context, entry *entries.Entry, queryTyp
 		return []dns.RR{}
 	}
 	rrs := make([]dns.RR, 0)
+	fqdn := fmt.Sprintf("%s%s", allMemberHost, entry.GetFqdn())
 	for _, member := range members {
 		rr, err := dns.NewRR(
-			fmt.Sprintf("%s%s %d IN %s %s", allMemberHost, entry.GetFqdn(), entry.GetTtl(), dns.TypeToString[queryType], member.GetIp()),
+			fmt.Sprintf("%s %d IN %s %s", fqdn, entry.GetTtl(), dns.TypeToString[queryType], member.GetIp()),
 		)
 		if err != nil {
 			log.Errorf("error creating dns RR: %s", err.Error())
@@ -231,7 +233,7 @@ func (h *GSLBHandler) seeAll(ctx context.Context, entry *entries.Entry, queryTyp
 		}
 		rrs = append(rrs, rr)
 	}
-	stats.AddQuerySuccess(ctx, entry.GetFqdn(), dns.TypeToString[queryType])
+	stats.AddQuerySuccess(ctx, fqdn, dns.TypeToString[queryType])
 	return rrs
 }
 
