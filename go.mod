@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/ArthurHlt/emitter v1.1.0
-	github.com/alecthomas/kong v0.8.0
+	github.com/alecthomas/kong v0.8.1
 	github.com/gorilla/mux v1.8.0
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.1
 	github.com/hashicorp/consul/api v1.25.1
