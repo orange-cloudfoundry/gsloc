@@ -167,8 +167,6 @@ github.com/onsi/ginkgo/v2 v2.13.0 h1:0jY9lJquiL8fcf3M4LAXN5aMlS/b2BV86HFFPCPMgE4
 github.com/onsi/ginkgo/v2 v2.13.0/go.mod h1:TE309ZR8s5FsKKpuB1YAQYBzCaAfUgatB/xlT/ETL/o=
 github.com/onsi/gomega v1.28.0 h1:i2rg/p9n/UqIDAMFUJ6qIUUMcsqOuUHgbpbu235Vr1c=
 github.com/onsi/gomega v1.28.0/go.mod h1:A1H2JE76sI14WIP57LMKj7FVfCHx3g3BcZVjJG8bjX8=
-github.com/orange-cloudfoundry/gsloc-go-sdk v0.5.0 h1:bEX3nbxvmcPWqFacoWCsX5yoNYiWyMx1ibDlZqc67rE=
-github.com/orange-cloudfoundry/gsloc-go-sdk v0.5.0/go.mod h1:t7I60OATKiFc45BOEmKv/RRAKdD943uFwhWS1hu55sA=
 github.com/orange-cloudfoundry/gsloc-go-sdk v0.6.0 h1:aL3QdTYzAFKerwOVD7qg2vqm5S2GA9AnhNHjqu2fpvM=
 github.com/orange-cloudfoundry/gsloc-go-sdk v0.6.0/go.mod h1:t7I60OATKiFc45BOEmKv/RRAKdD943uFwhWS1hu55sA=
 github.com/oschwald/geoip2-golang v1.9.0 h1:uvD3O6fXAXs+usU+UGExshpdP13GAqp4GBrzN7IgKZc=
