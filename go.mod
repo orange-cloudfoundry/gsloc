@@ -12,7 +12,7 @@ require (
 	github.com/miekg/dns v1.1.56
 	github.com/onsi/ginkgo/v2 v2.13.0
 	github.com/onsi/gomega v1.28.0
-	github.com/orange-cloudfoundry/gsloc-go-sdk v0.5.0
+	github.com/orange-cloudfoundry/gsloc-go-sdk v0.6.0
 	github.com/oschwald/geoip2-golang v1.9.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.17.0
@@ -29,6 +29,7 @@ require (
 )
 
 require (
+	github.com/ArthurHlt/gohc v1.0.0 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
@@ -39,6 +40,7 @@ require (
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
+	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/pprof v0.0.0-20210407192527-94a9f03dee38 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect

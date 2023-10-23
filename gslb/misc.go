@@ -9,6 +9,7 @@ import (
 	"github.com/samber/lo"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"sort"
 )
 
@@ -58,4 +59,18 @@ func (s *Server) ListDcs(ctx context.Context, request *gslbsvc.ListDcsRequest) (
 	}
 	sort.Strings(dcs)
 	return &gslbsvc.ListDcsResponse{Dcs: dcs}, nil
+}
+
+func (s *Server) ListPluginHealthChecks(context.Context, *emptypb.Empty) (*gslbsvc.ListPluginHealthChecksResponse, error) {
+	infos := make([]*gslbsvc.PluginHealthCheckInfo, 0)
+	for _, plugin := range s.hcPlugins {
+		infos = append(infos, &gslbsvc.PluginHealthCheckInfo{
+			Name:        plugin.Name,
+			Description: plugin.Description,
+		})
+	}
+
+	return &gslbsvc.ListPluginHealthChecksResponse{
+		PluginHealthChecks: infos,
+	}, nil
 }

@@ -105,7 +105,11 @@ func (h *HcHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	hcker := MakeHealthCheck(hcDef, fqdn)
+	hcker, err := MakeHealthCheck(hcDef, fqdn, h.cnf.Plugins)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	host := fmt.Sprintf("%s:%d", ip, hcDef.GetPort())
 	err = hcker.Check(host)
 	if err != nil {

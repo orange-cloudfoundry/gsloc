@@ -29,6 +29,11 @@ func (s *Server) SetEntry(ctx context.Context, request *gslbsvc.SetEntryRequest)
 		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
 	}
 
+	err = s.validatePluginHealthCheck(request.GetHealthcheck())
+	if err != nil {
+		return nil, err
+	}
+
 	request.Entry.Fqdn = dns.CanonicalName(request.GetEntry().GetFqdn())
 
 	signedEntry := &entries.SignedEntry{

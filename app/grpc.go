@@ -83,7 +83,7 @@ func (a *App) loadGrpcServer() error {
 	grpcServer := grpc.NewServer(grpcOptions...)
 
 	reflection.Register(grpcServer)
-	serv, err := gslb.NewServer(a.consulClient, a.gslocConsul)
+	serv, err := gslb.NewServer(a.consulClient, a.gslocConsul, a.cnf.HealthCheckConfig.Plugins)
 	if err != nil {
 		return fmt.Errorf("agent: failed to create gslb server: %v", err)
 	}
