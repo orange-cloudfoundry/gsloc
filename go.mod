@@ -6,7 +6,7 @@ require (
 	github.com/ArthurHlt/emitter v1.1.0
 	github.com/ArthurHlt/gohc v1.0.0
 	github.com/alecthomas/kong v0.8.1
-	github.com/gorilla/mux v1.8.0
+	github.com/gorilla/mux v1.8.1
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.1
 	github.com/hashicorp/consul/api v1.26.1
 	github.com/hashicorp/go-multierror v1.1.1
