@@ -8,7 +8,7 @@ require (
 	github.com/alecthomas/kong v0.8.1
 	github.com/gorilla/mux v1.8.1
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.1
-	github.com/hashicorp/consul/api v1.26.1
+	github.com/hashicorp/consul/api v1.27.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/miekg/dns v1.1.58
 	github.com/onsi/gomega v1.31.1
