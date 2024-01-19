@@ -11,7 +11,7 @@ require (
 	github.com/hashicorp/consul/api v1.26.1
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/miekg/dns v1.1.58
-	github.com/onsi/gomega v1.31.0
+	github.com/onsi/gomega v1.31.1
 	github.com/orange-cloudfoundry/gsloc-go-sdk v0.8.2
 	github.com/oschwald/geoip2-golang v1.9.0
 	github.com/pkg/errors v0.9.1
@@ -51,7 +51,7 @@ require (
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
-	github.com/onsi/ginkgo/v2 v2.13.2 // indirect
+	github.com/onsi/ginkgo/v2 v2.15.0 // indirect
 	github.com/oschwald/maxminddb-golang v1.11.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
 	github.com/quic-go/qpack v0.4.0 // indirect
