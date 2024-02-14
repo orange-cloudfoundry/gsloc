@@ -165,8 +165,8 @@ github.com/onsi/ginkgo/v2 v2.15.0 h1:79HwNRBAZHOEwrczrgSOPy+eFTTlIGELKy5as+ClttY
 github.com/onsi/ginkgo/v2 v2.15.0/go.mod h1:HlxMHtYF57y6Dpf+mc5529KKmSq9h2FpCF+/ZkwUxKM=
 github.com/onsi/gomega v1.31.1 h1:KYppCUK+bUgAZwHOu7EXVBKyQA6ILvOESHkn/tgoqvo=
 github.com/onsi/gomega v1.31.1/go.mod h1:y40C95dwAD1Nz36SsEnxvfFe8FFfNxzI5eJ0EYGyAy0=
-github.com/orange-cloudfoundry/gsloc-go-sdk v0.9.0 h1:qoivkbdtOeNfOcx3K8TgaMJQFwxkDwuRXmI8vXGfjP4=
-github.com/orange-cloudfoundry/gsloc-go-sdk v0.9.0/go.mod h1:alDS2BJtSe+TeqxLpfA9AxseKQS0tKYeG2HOHXUHtuY=
+github.com/orange-cloudfoundry/gsloc-go-sdk v0.9.1 h1:aGX7Sz2LCrZPVk2rNGT5CMdxSUkMZvnIauK33DqK2A8=
+github.com/orange-cloudfoundry/gsloc-go-sdk v0.9.1/go.mod h1:jJ9x4zDS0bDdnomG3wstqBdH1yGy+axyTuMe9cH7U0Y=
 github.com/oschwald/geoip2-golang v1.9.0 h1:uvD3O6fXAXs+usU+UGExshpdP13GAqp4GBrzN7IgKZc=
 github.com/oschwald/geoip2-golang v1.9.0/go.mod h1:BHK6TvDyATVQhKNbQBdrj9eAvuwOMi2zSFXizL3K81Y=
 github.com/oschwald/maxminddb-golang v1.11.0 h1:aSXMqYR/EPNjGE8epgqwDay+P30hCBZIveY0WZbAWh0=

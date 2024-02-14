@@ -12,7 +12,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/miekg/dns v1.1.58
 	github.com/onsi/gomega v1.31.1
-	github.com/orange-cloudfoundry/gsloc-go-sdk v0.9.0
+	github.com/orange-cloudfoundry/gsloc-go-sdk v0.9.1
 	github.com/oschwald/geoip2-golang v1.9.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.18.0
